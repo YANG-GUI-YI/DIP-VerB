@@ -21,10 +21,10 @@
     <ClInclude Include="pch.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
-    <ClInclude Include="image_lib.h">
+    <ClInclude Include="ImageProc.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
-    <ClInclude Include="ImageProc.h">
+    <ClInclude Include="ImageProcm.h">
       <Filter>標頭檔</Filter>
     </ClInclude>
   </ItemGroup>
