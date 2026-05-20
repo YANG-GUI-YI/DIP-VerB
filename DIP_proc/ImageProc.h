@@ -11,4 +11,7 @@ extern "C"
     __declspec(dllexport) void HistogramStretch(int* input, int* output, int width, int height, int byteDepth);
     __declspec(dllexport) void HistogramEqualization(int* input, int* output, int width, int height, int byteDepth);
     __declspec(dllexport) void SpatialFilter(int* input, int* output, int width, int height, int byteDepth, int filterType, int kernelSize);
+    __declspec(dllexport) void OtsuThreshold(int* input, int* output, int width, int height, int byteDepth);
+    __declspec(dllexport) void LineDetection(int* input, int* output, int width, int height, int byteDepth, int lineType);
+    __declspec(dllexport) void CannyEdgeDetection(int* input, int* output, int width, int height, int byteDepth);
 }

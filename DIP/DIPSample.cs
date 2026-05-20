@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
@@ -24,13 +25,7 @@ namespace DIP
         private static extern void Contrast(IntPtr input, IntPtr output, int length, double factor);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        private static extern void GrayLevelSlice(IntPtr input, IntPtr output, int width, int height, int byteDepth, int low, int high, int highlight, int keepBackground);
-
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private static extern void BitPlaneSlice(IntPtr input, IntPtr output, int width, int height, int byteDepth, int bitPlane);
-
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        private static extern void HistogramStretch(IntPtr input, IntPtr output, int width, int height, int byteDepth);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private static extern void HistogramEqualization(IntPtr input, IntPtr output, int width, int height, int byteDepth);
@@ -38,12 +33,33 @@ namespace DIP
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private static extern void SpatialFilter(IntPtr input, IntPtr output, int width, int height, int byteDepth, int filterType, int kernelSize);
 
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void OtsuThreshold(IntPtr input, IntPtr output, int width, int height, int byteDepth);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void LineDetection(IntPtr input, IntPtr output, int width, int height, int byteDepth, int lineType);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void CannyEdgeDetection(IntPtr input, IntPtr output, int width, int height, int byteDepth);
+
         private Bitmap NpBitmap;
         private int w, h;
 
         public DIPSample()
         {
             InitializeComponent();
+        }
+
+        private delegate void ImageOperation(IntPtr input, IntPtr output, int width, int height, int byteDepth, int length);
+
+        private sealed class ImageContext
+        {
+            public int[] Input;
+            public int ByteDepth;
+            public PixelFormat PixelFormat;
+            public ColorPalette Palette;
+            public int Width;
+            public int Height;
         }
 
         private void DIPSample_Load(object sender, EventArgs e)
@@ -151,18 +167,6 @@ namespace DIP
             return myBitmap;
         }
 
-        private delegate void ImageOperation(IntPtr input, IntPtr output, int width, int height, int byteDepth, int length);
-
-        private sealed class ImageContext
-        {
-            public int[] Input;
-            public int ByteDepth;
-            public PixelFormat PixelFormat;
-            public ColorPalette Palette;
-            public int Width;
-            public int Height;
-        }
-
         private MSForm ActiveImageForm()
         {
             foreach (MSForm child in MdiChildren)
@@ -173,6 +177,17 @@ namespace DIP
                 }
             }
             return null;
+        }
+
+        private Bitmap GetActiveBitmapClone()
+        {
+            MSForm activeForm = ActiveImageForm();
+            if (activeForm == null || activeForm.pBitmap == null)
+            {
+                MessageBox.Show("請先開啟並選取一張影像。", "DIP");
+                return null;
+            }
+            return new Bitmap(activeForm.pBitmap);
         }
 
         private ImageContext GetActiveImageContext()
@@ -290,49 +305,19 @@ namespace DIP
             return value;
         }
 
-        private void 灰階ToolStripMenuItem_Click(object sender, EventArgs e)
+        private void grayToolStripMenuItem_Click(object sender, EventArgs e)
         {
             ApplyImageOperation((input, output, width, height, byteDepth, length) =>
                 GrayScale(input, output, width, height, byteDepth));
         }
 
-        private void 負片ToolStripMenuItem_Click(object sender, EventArgs e)
+        private void negativeToolStripMenuItem_Click(object sender, EventArgs e)
         {
             ApplyImageOperation((input, output, width, height, byteDepth, length) =>
                 Negative(input, output, length));
         }
 
-        private void 亮度增加ToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            ShowBrightnessDialog();
-        }
-
-        private void 亮度降低ToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            ShowBrightnessDialog();
-        }
-
-        private void 亮度調整ToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            ShowBrightnessDialog();
-        }
-
-        private void 對比增強ToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            ShowContrastDialog();
-        }
-
-        private void 對比降低ToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            ShowContrastDialog();
-        }
-
-        private void 對比ToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            ShowContrastDialog();
-        }
-
-        private void 切片ToolStripMenuItem_Click(object sender, EventArgs e)
+        private void bitSliceToolStripMenuItem_Click(object sender, EventArgs e)
         {
             ImageContext context = GetActiveImageContext();
             if (context == null)
@@ -351,59 +336,13 @@ namespace DIP
             dialog.Show(this);
         }
 
-        private void 直方圖轉換ToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            ImageContext context = GetActiveImageContext();
-            if (context == null)
-            {
-                return;
-            }
-
-            HistogramForm dialog = new HistogramForm("直方圖", BuildHistogram(context));
-            dialog.Show(this);
-        }
-
-        private void 直方圖等化ToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            ImageContext context = GetActiveImageContext();
-            if (context == null)
-            {
-                return;
-            }
-
-            NpBitmap = ProcessImage(context, (input, output, width, height, byteDepth, length) =>
-                HistogramEqualization(input, output, width, height, byteDepth));
-            ShowImage(NpBitmap);
-
-            HistogramForm dialog = new HistogramForm("等化後直方圖", BuildHistogram(NpBitmap));
-            dialog.Show(this);
-        }
-
-        private void 平均濾波ToolStripMenuItem_Click(object sender, EventArgs e)
+        private void otsuToolStripMenuItem_Click(object sender, EventArgs e)
         {
             ApplyImageOperation((input, output, width, height, byteDepth, length) =>
-                SpatialFilter(input, output, width, height, byteDepth, 0, 3));
+                OtsuThreshold(input, output, width, height, byteDepth));
         }
 
-        private void 中值濾波ToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            ApplyImageOperation((input, output, width, height, byteDepth, length) =>
-                SpatialFilter(input, output, width, height, byteDepth, 1, 3));
-        }
-
-        private void 銳化濾波ToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            ApplyImageOperation((input, output, width, height, byteDepth, length) =>
-                SpatialFilter(input, output, width, height, byteDepth, 2, 3));
-        }
-
-        private void 邊緣濾波ToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            ApplyImageOperation((input, output, width, height, byteDepth, length) =>
-                SpatialFilter(input, output, width, height, byteDepth, 3, 3));
-        }
-
-        private void ShowBrightnessDialog()
+        private void brightnessToolStripMenuItem_Click(object sender, EventArgs e)
         {
             ImageContext context = GetActiveImageContext();
             if (context == null)
@@ -422,7 +361,7 @@ namespace DIP
             dialog.Show(this);
         }
 
-        private void ShowContrastDialog()
+        private void contrastToolStripMenuItem_Click(object sender, EventArgs e)
         {
             ImageContext context = GetActiveImageContext();
             if (context == null)
@@ -443,6 +382,163 @@ namespace DIP
                 },
                 value => "對比：" + (value / 100.0).ToString("0.00"));
             dialog.Show(this);
+        }
+
+        private void histogramShowToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ImageContext context = GetActiveImageContext();
+            if (context == null)
+            {
+                return;
+            }
+
+            HistogramForm dialog = new HistogramForm("直方圖", BuildHistogram(context));
+            dialog.Show(this);
+        }
+
+        private void histogramEqualizeToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ImageContext context = GetActiveImageContext();
+            if (context == null)
+            {
+                return;
+            }
+
+            NpBitmap = ProcessImage(context, (input, output, width, height, byteDepth, length) =>
+                HistogramEqualization(input, output, width, height, byteDepth));
+            ShowImage(NpBitmap);
+
+            HistogramForm dialog = new HistogramForm("等化後直方圖", BuildHistogram(NpBitmap));
+            dialog.Show(this);
+        }
+
+        private void scaleToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Bitmap source = GetActiveBitmapClone();
+            if (source == null)
+            {
+                return;
+            }
+
+            using (source)
+            using (ValueInputForm dialog = new ValueInputForm("放大縮小", "比例（%）：", "100"))
+            {
+                if (dialog.ShowDialog(this) != DialogResult.OK)
+                {
+                    return;
+                }
+
+                if (double.TryParse(dialog.InputValue, out double percent) && percent > 0)
+                {
+                    NpBitmap = ScaleBitmap(source, percent / 100.0);
+                    ShowImage(NpBitmap);
+                }
+                else
+                {
+                    MessageBox.Show("請輸入大於 0 的比例。", "DIP");
+                }
+            }
+        }
+
+        private void rotateToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Bitmap source = GetActiveBitmapClone();
+            if (source == null)
+            {
+                return;
+            }
+
+            using (source)
+            using (ValueInputForm dialog = new ValueInputForm("圖片旋轉", "角度：", "0"))
+            {
+                if (dialog.ShowDialog(this) != DialogResult.OK)
+                {
+                    return;
+                }
+
+                if (double.TryParse(dialog.InputValue, out double angle))
+                {
+                    NpBitmap = RotateBitmap(source, angle);
+                    ShowImage(NpBitmap);
+                }
+                else
+                {
+                    MessageBox.Show("請輸入有效角度。", "DIP");
+                }
+            }
+        }
+
+        private static Bitmap ScaleBitmap(Bitmap source, double scale)
+        {
+            int newWidth = Math.Max(1, (int)Math.Round(source.Width * scale));
+            int newHeight = Math.Max(1, (int)Math.Round(source.Height * scale));
+            Bitmap result = new Bitmap(newWidth, newHeight, PixelFormat.Format24bppRgb);
+            using (Graphics g = Graphics.FromImage(result))
+            {
+                g.Clear(Color.White);
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                g.DrawImage(source, new Rectangle(0, 0, newWidth, newHeight));
+            }
+            return result;
+        }
+
+        private static Bitmap RotateBitmap(Bitmap source, double angle)
+        {
+            double radians = angle * Math.PI / 180.0;
+            double cos = Math.Abs(Math.Cos(radians));
+            double sin = Math.Abs(Math.Sin(radians));
+            int newWidth = Math.Max(1, (int)Math.Ceiling(source.Width * cos + source.Height * sin));
+            int newHeight = Math.Max(1, (int)Math.Ceiling(source.Width * sin + source.Height * cos));
+
+            Bitmap result = new Bitmap(newWidth, newHeight, PixelFormat.Format24bppRgb);
+            using (Graphics g = Graphics.FromImage(result))
+            {
+                g.Clear(Color.White);
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                g.TranslateTransform(newWidth / 2f, newHeight / 2f);
+                g.RotateTransform((float)angle);
+                g.TranslateTransform(-source.Width / 2f, -source.Height / 2f);
+                g.DrawImage(source, new PointF(0, 0));
+            }
+            return result;
+        }
+
+        private void meanFilterToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ApplyImageOperation((input, output, width, height, byteDepth, length) =>
+                SpatialFilter(input, output, width, height, byteDepth, 0, 3));
+        }
+
+        private void medianFilterToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ApplyImageOperation((input, output, width, height, byteDepth, length) =>
+                SpatialFilter(input, output, width, height, byteDepth, 1, 3));
+        }
+
+        private void sharpenFilterToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ApplyImageOperation((input, output, width, height, byteDepth, length) =>
+                SpatialFilter(input, output, width, height, byteDepth, 2, 3));
+        }
+
+        private void edgeFilterToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ApplyImageOperation((input, output, width, height, byteDepth, length) =>
+                SpatialFilter(input, output, width, height, byteDepth, 3, 3));
+        }
+
+        private void laplacianFilterToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ApplyImageOperation((input, output, width, height, byteDepth, length) =>
+                SpatialFilter(input, output, width, height, byteDepth, 4, 3));
+        }
+
+        private void cannyEdgeToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ApplyImageOperation((input, output, width, height, byteDepth, length) =>
+                CannyEdgeDetection(input, output, width, height, byteDepth));
         }
 
         private void stStripLabel_Click(object sender, EventArgs e)
@@ -530,7 +626,70 @@ namespace DIP
             }
         }
 
+        private sealed class ValueInputForm : Form
+        {
+            private readonly TextBox textBox;
+            private readonly Button okButton;
+            private readonly Button cancelButton;
 
+            public string InputValue
+            {
+                get { return textBox.Text; }
+            }
+
+            public ValueInputForm(string title, string labelText, string defaultValue)
+            {
+                Text = title;
+                Width = 320;
+                Height = 150;
+                FormBorderStyle = FormBorderStyle.FixedDialog;
+                MaximizeBox = false;
+                MinimizeBox = false;
+                StartPosition = FormStartPosition.CenterParent;
+
+                Label label = new Label
+                {
+                    Left = 16,
+                    Top = 18,
+                    Width = 260,
+                    Text = labelText
+                };
+
+                textBox = new TextBox
+                {
+                    Left = 16,
+                    Top = 44,
+                    Width = 270,
+                    Text = defaultValue
+                };
+
+                okButton = new Button
+                {
+                    Left = 130,
+                    Top = 78,
+                    Width = 75,
+                    Text = "確認",
+                    DialogResult = DialogResult.OK
+                };
+
+                cancelButton = new Button
+                {
+                    Left = 212,
+                    Top = 78,
+                    Width = 75,
+                    Text = "取消",
+                    DialogResult = DialogResult.Cancel
+                };
+
+                AcceptButton = okButton;
+                CancelButton = cancelButton;
+
+                Controls.Add(label);
+                Controls.Add(textBox);
+                Controls.Add(okButton);
+                Controls.Add(cancelButton);
+            }
+        }
 
         private sealed class HistogramForm : Form
         {
