@@ -137,7 +137,6 @@
   <ItemGroup>
     <ClInclude Include="framework.h" />
     <ClInclude Include="ImageProc.h" />
-    <ClInclude Include="ImageProcm.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
