@@ -46,7 +46,6 @@ namespace DIP
             this.prewittFilterToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.sobelFilterToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.customKernelToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.cannyEdgeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.houghLineToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.houghCircleToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.oFileDlg = new System.Windows.Forms.OpenFileDialog();
@@ -234,7 +233,6 @@ namespace DIP
             this.prewittFilterToolStripMenuItem,
             this.sobelFilterToolStripMenuItem,
             this.customKernelToolStripMenuItem,
-            this.cannyEdgeToolStripMenuItem,
             this.houghLineToolStripMenuItem,
             this.houghCircleToolStripMenuItem});
             this.filterDetectToolStripMenuItem.Name = "filterDetectToolStripMenuItem";
@@ -296,13 +294,6 @@ namespace DIP
             this.customKernelToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
             this.customKernelToolStripMenuItem.Text = "自定義 Kernel";
             this.customKernelToolStripMenuItem.Click += new System.EventHandler(this.customKernelToolStripMenuItem_Click);
-            // 
-            // cannyEdgeToolStripMenuItem
-            // 
-            this.cannyEdgeToolStripMenuItem.Name = "cannyEdgeToolStripMenuItem";
-            this.cannyEdgeToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
-            this.cannyEdgeToolStripMenuItem.Text = "Canny Edge Detection";
-            this.cannyEdgeToolStripMenuItem.Click += new System.EventHandler(this.cannyEdgeToolStripMenuItem_Click);
             // 
             // houghLineToolStripMenuItem
             // 
@@ -377,7 +368,6 @@ namespace DIP
         private System.Windows.Forms.ToolStripMenuItem prewittFilterToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem sobelFilterToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem customKernelToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem cannyEdgeToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem houghLineToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem houghCircleToolStripMenuItem;
         private System.Windows.Forms.OpenFileDialog oFileDlg;

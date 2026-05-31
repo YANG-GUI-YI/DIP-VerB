@@ -43,9 +43,6 @@ namespace DIP
         private static extern void LineDetection(IntPtr input, IntPtr output, int width, int height, int byteDepth, int lineType);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        private static extern void CannyEdgeDetection(IntPtr input, IntPtr output, int width, int height, int byteDepth);
-
-        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private static extern void HoughTransformLineDetection(IntPtr input, IntPtr output, int width, int height, int byteDepth);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
@@ -665,12 +662,6 @@ namespace DIP
                 });
                 ShowImage(NpBitmap);
             }
-        }
-
-        private void cannyEdgeToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            ApplyImageOperation((input, output, width, height, byteDepth, length) =>
-                CannyEdgeDetection(input, output, width, height, byteDepth));
         }
 
         private void houghLineToolStripMenuItem_Click(object sender, EventArgs e)
