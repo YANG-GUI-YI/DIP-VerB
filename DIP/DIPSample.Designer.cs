@@ -33,6 +33,7 @@ namespace DIP
             this.histogramToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.histogramShowToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.histogramEqualizeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.histogramStretchToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.geometryToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.scaleToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.rotateToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -173,7 +174,8 @@ namespace DIP
             // 
             this.histogramToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.histogramShowToolStripMenuItem,
-            this.histogramEqualizeToolStripMenuItem});
+            this.histogramEqualizeToolStripMenuItem,
+            this.histogramStretchToolStripMenuItem});
             this.histogramToolStripMenuItem.Name = "histogramToolStripMenuItem";
             this.histogramToolStripMenuItem.Size = new System.Drawing.Size(152, 26);
             this.histogramToolStripMenuItem.Text = "直方圖";
@@ -181,16 +183,23 @@ namespace DIP
             // histogramShowToolStripMenuItem
             // 
             this.histogramShowToolStripMenuItem.Name = "histogramShowToolStripMenuItem";
-            this.histogramShowToolStripMenuItem.Size = new System.Drawing.Size(122, 26);
-            this.histogramShowToolStripMenuItem.Text = "顯示";
+            this.histogramShowToolStripMenuItem.Size = new System.Drawing.Size(152, 26);
+            this.histogramShowToolStripMenuItem.Text = "直方圖顯示";
             this.histogramShowToolStripMenuItem.Click += new System.EventHandler(this.histogramShowToolStripMenuItem_Click);
             // 
             // histogramEqualizeToolStripMenuItem
             // 
             this.histogramEqualizeToolStripMenuItem.Name = "histogramEqualizeToolStripMenuItem";
-            this.histogramEqualizeToolStripMenuItem.Size = new System.Drawing.Size(122, 26);
+            this.histogramEqualizeToolStripMenuItem.Size = new System.Drawing.Size(152, 26);
             this.histogramEqualizeToolStripMenuItem.Text = "等化";
             this.histogramEqualizeToolStripMenuItem.Click += new System.EventHandler(this.histogramEqualizeToolStripMenuItem_Click);
+            // 
+            // histogramStretchToolStripMenuItem
+            // 
+            this.histogramStretchToolStripMenuItem.Name = "histogramStretchToolStripMenuItem";
+            this.histogramStretchToolStripMenuItem.Size = new System.Drawing.Size(152, 26);
+            this.histogramStretchToolStripMenuItem.Text = "轉換";
+            this.histogramStretchToolStripMenuItem.Click += new System.EventHandler(this.histogramStretchToolStripMenuItem_Click);
             // 
             // geometryToolStripMenuItem
             // 
@@ -364,6 +373,7 @@ namespace DIP
         private System.Windows.Forms.ToolStripMenuItem histogramToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem histogramShowToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem histogramEqualizeToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem histogramStretchToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem geometryToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem scaleToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem rotateToolStripMenuItem;

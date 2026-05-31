@@ -28,6 +28,9 @@ namespace DIP
         private static extern void BitPlaneSlice(IntPtr input, IntPtr output, int width, int height, int byteDepth, int bitPlane);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void HistogramStretch(IntPtr input, IntPtr output, int width, int height, int byteDepth);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private static extern void HistogramEqualization(IntPtr input, IntPtr output, int width, int height, int byteDepth);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
@@ -462,6 +465,22 @@ namespace DIP
             }
 
             HistogramForm dialog = new HistogramForm("直方圖", BuildHistogram(context));
+            dialog.Show(this);
+        }
+
+        private void histogramStretchToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ImageContext context = GetActiveImageContext();
+            if (context == null)
+            {
+                return;
+            }
+
+            NpBitmap = ProcessImage(context, (input, output, width, height, byteDepth, length) =>
+                HistogramStretch(input, output, width, height, byteDepth));
+            ShowImage(NpBitmap);
+
+            HistogramForm dialog = new HistogramForm("轉換後直方圖", BuildHistogram(NpBitmap));
             dialog.Show(this);
         }
 

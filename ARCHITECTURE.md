@@ -72,7 +72,7 @@ int[] 結果轉回 Bitmap
 | --- | --- |
 | `File` | 開啟 BMP 圖片。 |
 | `基本處理` | 灰階、負片、位元切片、Otsu 分割。 |
-| `調整與直方圖` | 亮度調整、對比、直方圖顯示、直方圖等化。 |
+| `調整與直方圖` | 亮度調整、對比、直方圖顯示、直方圖等化、直方圖轉換。 |
 | `幾何` | 放大縮小、圖片旋轉。 |
 | `濾波與偵測` | 平均濾波、中值濾波、高斯濾波、銳化、邊緣偵測、拉普拉斯銳化、Prewitt、Sobel、自定義 Kernel、Canny Edge Detection、Hough Line Detection、Hough Circle Detection。 |
 
@@ -124,7 +124,7 @@ int[] 結果轉回 Bitmap
 | `TrackPreviewForm` | 使用 TrackBar 即時預覽，例如位元切片、亮度與對比。 |
 | `ValueInputForm` | TextBox 加確認按鈕，用於放大縮小與旋轉。 |
 | `HeaderImageForm` | 在圖片上方顯示資訊，例如 Otsu 閥值。 |
-| `HistogramForm` | 顯示圖片直方圖，等化後可顯示等化圖片與新直方圖。 |
+| `HistogramForm` | 顯示圖片直方圖，等化或轉換後可顯示處理後圖片與新直方圖。 |
 | `CustomKernelForm` | 輸入自定義 3x3 kernel、divisor、offset。 |
 
 ## 像素資料格式
