@@ -617,12 +617,6 @@ namespace DIP
                 SpatialFilter(input, output, width, height, byteDepth, 2, 3));
         }
 
-        private void edgeFilterToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            ApplyImageOperation((input, output, width, height, byteDepth, length) =>
-                SpatialFilter(input, output, width, height, byteDepth, 3, 3));
-        }
-
         private void laplacianFilterToolStripMenuItem_Click(object sender, EventArgs e)
         {
             ApplyImageOperation((input, output, width, height, byteDepth, length) =>

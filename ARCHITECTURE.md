@@ -74,7 +74,7 @@ int[] 結果轉回 Bitmap
 | `基本處理` | 灰階、負片、位元切片、Otsu 分割。 |
 | `調整與直方圖` | 亮度調整、對比、直方圖顯示、直方圖等化、直方圖轉換。 |
 | `幾何` | 放大縮小、圖片旋轉。 |
-| `濾波與偵測` | 平均濾波、中值濾波、高斯濾波、銳化、邊緣偵測、拉普拉斯銳化、Prewitt、Sobel、自定義 Kernel、Canny Edge Detection、Hough Line Detection、Hough Circle Detection。 |
+| `濾波與偵測` | 平均濾波、中值濾波、高斯濾波、銳化、拉普拉斯銳化、Prewitt、Sobel、自定義 Kernel、Canny Edge Detection、Hough Line Detection、Hough Circle Detection。 |
 
 ## C++ DLL
 
