@@ -72,6 +72,30 @@ namespace
         }
     }
 
+    void SetRedPixel(int* output, int x, int y, int width, int height, int byteDepth)
+    {
+        if (x < 0 || x >= width || y < 0 || y >= height)
+        {
+            return;
+        }
+
+        int index = PixelIndex(x, y, width, byteDepth, 0);
+        if (byteDepth >= 3)
+        {
+            output[index] = 0;
+            output[index + 1] = 0;
+            output[index + 2] = 255;
+            if (byteDepth == 4)
+            {
+                output[index + 3] = 255;
+            }
+        }
+        else
+        {
+            output[index] = 255;
+        }
+    }
+
     void CopyAlpha(int* input, int* output, int length, int byteDepth)
     {
         if (byteDepth != 4)
@@ -327,6 +351,25 @@ extern "C"
                             }
                         }
                     }
+                    else if (filterType == 7)
+                    {
+                        static const int kernel[3][3] = {
+                            {1, 2, 1},
+                            {2, 4, 2},
+                            {1, 2, 1}
+                        };
+                        int sum = 0;
+                        for (int ky = -1; ky <= 1; ++ky)
+                        {
+                            int sy = BoundCoord(y + ky, height);
+                            for (int kx = -1; kx <= 1; ++kx)
+                            {
+                                int sx = BoundCoord(x + kx, width);
+                                sum += input[PixelIndex(sx, sy, width, byteDepth, c)] * kernel[ky + 1][kx + 1];
+                            }
+                        }
+                        value = sum / 16;
+                    }
                     else if (filterType == 3)
                     {
                         static const int kernel[3][3] = {
@@ -348,9 +391,9 @@ extern "C"
                     else if (filterType == 4)
                     {
                         static const int kernel[3][3] = {
-                            {0, -1, 0},
-                            {-1, 4, -1},
-                            {0, -1, 0}
+                            {-1, -1, -1},
+                            {-1, 9, -1},
+                            {-1, -1, -1}
                         };
                         for (int ky = -1; ky <= 1; ++ky)
                         {
@@ -361,7 +404,46 @@ extern "C"
                                 value += input[PixelIndex(sx, sy, width, byteDepth, c)] * kernel[ky + 1][kx + 1];
                             }
                         }
-                        value = std::abs(value);
+                    }
+                    else if (filterType == 5 || filterType == 6)
+                    {
+                        static const int prewittX[3][3] = {
+                            {-1, 0, 1},
+                            {-1, 0, 1},
+                            {-1, 0, 1}
+                        };
+                        static const int prewittY[3][3] = {
+                            {-1, -1, -1},
+                            {0, 0, 0},
+                            {1, 1, 1}
+                        };
+                        static const int sobelX[3][3] = {
+                            {-1, 0, 1},
+                            {-2, 0, 2},
+                            {-1, 0, 1}
+                        };
+                        static const int sobelY[3][3] = {
+                            {-1, -2, -1},
+                            {0, 0, 0},
+                            {1, 2, 1}
+                        };
+
+                        const int (*kernelX)[3] = filterType == 5 ? prewittX : sobelX;
+                        const int (*kernelY)[3] = filterType == 5 ? prewittY : sobelY;
+                        int gx = 0;
+                        int gy = 0;
+                        for (int ky = -1; ky <= 1; ++ky)
+                        {
+                            int sy = BoundCoord(y + ky, height);
+                            for (int kx = -1; kx <= 1; ++kx)
+                            {
+                                int sx = BoundCoord(x + kx, width);
+                                int pixel = input[PixelIndex(sx, sy, width, byteDepth, c)];
+                                gx += pixel * kernelX[ky + 1][kx + 1];
+                                gy += pixel * kernelY[ky + 1][kx + 1];
+                            }
+                        }
+                        value = static_cast<int>(std::sqrt(static_cast<double>(gx * gx + gy * gy)));
                     }
                     else
                     {
@@ -657,6 +739,301 @@ extern "C"
             {
                 int value = strong[y * width + x] ? 255 : 0;
                 SetPixelChannels(output, x, y, width, byteDepth, value);
+            }
+        }
+        CopyAlpha(input, output, length, byteDepth);
+    }
+
+    __declspec(dllexport) void HoughTransformLineDetection(int* input, int* output, int width, int height, int byteDepth)
+    {
+        int length = width * height * byteDepth;
+        int total = width * height;
+        std::copy(input, input + length, output);
+
+        std::vector<int> gray(total);
+        std::vector<int> magnitude(total);
+        int maxMagnitude = 1;
+
+        for (int y = 0; y < height; ++y)
+        {
+            for (int x = 0; x < width; ++x)
+            {
+                gray[y * width + x] = GrayAt(input, x, y, width, byteDepth);
+            }
+        }
+
+        static const int sobelX[3][3] = {
+            {-1, 0, 1},
+            {-2, 0, 2},
+            {-1, 0, 1}
+        };
+        static const int sobelY[3][3] = {
+            {-1, -2, -1},
+            {0, 0, 0},
+            {1, 2, 1}
+        };
+
+        for (int y = 0; y < height; ++y)
+        {
+            for (int x = 0; x < width; ++x)
+            {
+                int gx = 0;
+                int gy = 0;
+                for (int ky = -1; ky <= 1; ++ky)
+                {
+                    int sy = BoundCoord(y + ky, height);
+                    for (int kx = -1; kx <= 1; ++kx)
+                    {
+                        int sx = BoundCoord(x + kx, width);
+                        int value = gray[sy * width + sx];
+                        gx += value * sobelX[ky + 1][kx + 1];
+                        gy += value * sobelY[ky + 1][kx + 1];
+                    }
+                }
+
+                int mag = static_cast<int>(std::sqrt(static_cast<double>(gx * gx + gy * gy)));
+                magnitude[y * width + x] = mag;
+                maxMagnitude = MaxInt(maxMagnitude, mag);
+            }
+        }
+
+        const int thetaCount = 180;
+        const double pi = 3.14159265358979323846;
+        int rhoMax = static_cast<int>(std::ceil(std::sqrt(static_cast<double>(width * width + height * height))));
+        int rhoCount = rhoMax * 2 + 1;
+        std::vector<int> accumulator(thetaCount * rhoCount, 0);
+        std::vector<double> cosTable(thetaCount);
+        std::vector<double> sinTable(thetaCount);
+
+        for (int theta = 0; theta < thetaCount; ++theta)
+        {
+            double radians = theta * pi / 180.0;
+            cosTable[theta] = std::cos(radians);
+            sinTable[theta] = std::sin(radians);
+        }
+
+        int edgeThreshold = MaxInt(50, maxMagnitude * 35 / 100);
+        for (int y = 0; y < height; ++y)
+        {
+            for (int x = 0; x < width; ++x)
+            {
+                if (magnitude[y * width + x] < edgeThreshold)
+                {
+                    continue;
+                }
+
+                for (int theta = 0; theta < thetaCount; ++theta)
+                {
+                    int rho = static_cast<int>(std::round(x * cosTable[theta] + y * sinTable[theta])) + rhoMax;
+                    accumulator[theta * rhoCount + rho]++;
+                }
+            }
+        }
+
+        struct HoughLine
+        {
+            int votes;
+            int theta;
+            int rho;
+        };
+
+        std::vector<HoughLine> candidates;
+        int maxVotes = 1;
+        for (int theta = 0; theta < thetaCount; ++theta)
+        {
+            for (int rho = 0; rho < rhoCount; ++rho)
+            {
+                int votes = accumulator[theta * rhoCount + rho];
+                maxVotes = MaxInt(maxVotes, votes);
+            }
+        }
+
+        int voteThreshold = MaxInt(30, maxVotes * 45 / 100);
+        for (int theta = 0; theta < thetaCount; ++theta)
+        {
+            for (int rho = 0; rho < rhoCount; ++rho)
+            {
+                int votes = accumulator[theta * rhoCount + rho];
+                if (votes >= voteThreshold)
+                {
+                    candidates.push_back({ votes, theta, rho - rhoMax });
+                }
+            }
+        }
+
+        std::sort(candidates.begin(), candidates.end(), [](const HoughLine& left, const HoughLine& right) {
+            return left.votes > right.votes;
+        });
+
+        if (!candidates.empty())
+        {
+            int theta = candidates[0].theta;
+            int rho = candidates[0].rho;
+            double cosTheta = cosTable[theta];
+            double sinTheta = sinTable[theta];
+
+            if (std::fabs(sinTheta) > std::fabs(cosTheta))
+            {
+                for (int x = 0; x < width; ++x)
+                {
+                    int y = static_cast<int>(std::round((rho - x * cosTheta) / sinTheta));
+                    SetRedPixel(output, x, y, width, height, byteDepth);
+                }
+            }
+            else
+            {
+                for (int y = 0; y < height; ++y)
+                {
+                    int x = static_cast<int>(std::round((rho - y * sinTheta) / cosTheta));
+                    SetRedPixel(output, x, y, width, height, byteDepth);
+                }
+            }
+        }
+    }
+
+    __declspec(dllexport) void HoughTransformCircleDetection(int* input, int* output, int width, int height, int byteDepth)
+    {
+        int length = width * height * byteDepth;
+        int total = width * height;
+        std::copy(input, input + length, output);
+
+        std::vector<int> gray(total);
+        std::vector<int> magnitude(total);
+        int maxMagnitude = 1;
+
+        for (int y = 0; y < height; ++y)
+        {
+            for (int x = 0; x < width; ++x)
+            {
+                gray[y * width + x] = GrayAt(input, x, y, width, byteDepth);
+            }
+        }
+
+        static const int sobelX[3][3] = {
+            {-1, 0, 1},
+            {-2, 0, 2},
+            {-1, 0, 1}
+        };
+        static const int sobelY[3][3] = {
+            {-1, -2, -1},
+            {0, 0, 0},
+            {1, 2, 1}
+        };
+
+        for (int y = 0; y < height; ++y)
+        {
+            for (int x = 0; x < width; ++x)
+            {
+                int gx = 0;
+                int gy = 0;
+                for (int ky = -1; ky <= 1; ++ky)
+                {
+                    int sy = BoundCoord(y + ky, height);
+                    for (int kx = -1; kx <= 1; ++kx)
+                    {
+                        int sx = BoundCoord(x + kx, width);
+                        int value = gray[sy * width + sx];
+                        gx += value * sobelX[ky + 1][kx + 1];
+                        gy += value * sobelY[ky + 1][kx + 1];
+                    }
+                }
+
+                int mag = static_cast<int>(std::sqrt(static_cast<double>(gx * gx + gy * gy)));
+                magnitude[y * width + x] = mag;
+                maxMagnitude = MaxInt(maxMagnitude, mag);
+            }
+        }
+
+        int minDimension = MinInt(width, height);
+        int minRadius = MaxInt(8, minDimension / 12);
+        int maxRadius = MaxInt(minRadius + 1, minDimension / 2);
+        int radiusStep = MaxInt(2, minDimension / 80);
+        int angleStep = 10;
+        int edgeThreshold = MaxInt(50, maxMagnitude * 35 / 100);
+
+        int bestX = 0;
+        int bestY = 0;
+        int bestRadius = 0;
+        int bestVotes = 0;
+        const double pi = 3.14159265358979323846;
+
+        std::vector<int> accumulator(total, 0);
+        for (int radius = minRadius; radius <= maxRadius; radius += radiusStep)
+        {
+            std::fill(accumulator.begin(), accumulator.end(), 0);
+
+            for (int y = 0; y < height; ++y)
+            {
+                for (int x = 0; x < width; ++x)
+                {
+                    if (magnitude[y * width + x] < edgeThreshold)
+                    {
+                        continue;
+                    }
+
+                    for (int angle = 0; angle < 360; angle += angleStep)
+                    {
+                        double radians = angle * pi / 180.0;
+                        int cx = static_cast<int>(std::round(x - radius * std::cos(radians)));
+                        int cy = static_cast<int>(std::round(y - radius * std::sin(radians)));
+                        if (cx >= 0 && cx < width && cy >= 0 && cy < height)
+                        {
+                            int votes = ++accumulator[cy * width + cx];
+                            if (votes > bestVotes)
+                            {
+                                bestVotes = votes;
+                                bestX = cx;
+                                bestY = cy;
+                                bestRadius = radius;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (bestVotes > 0)
+        {
+            for (int angle = 0; angle < 360; ++angle)
+            {
+                double radians = angle * pi / 180.0;
+                int x = static_cast<int>(std::round(bestX + bestRadius * std::cos(radians)));
+                int y = static_cast<int>(std::round(bestY + bestRadius * std::sin(radians)));
+                SetRedPixel(output, x, y, width, height, byteDepth);
+            }
+        }
+    }
+
+    __declspec(dllexport) void CustomKernelFilter(int* input, int* output, int width, int height, int byteDepth, int* kernel, int divisor, int offset)
+    {
+        int length = width * height * byteDepth;
+        int channels = ChannelCount(byteDepth);
+        std::copy(input, input + length, output);
+
+        if (divisor == 0)
+        {
+            divisor = 1;
+        }
+
+        for (int y = 0; y < height; ++y)
+        {
+            for (int x = 0; x < width; ++x)
+            {
+                for (int c = 0; c < channels; ++c)
+                {
+                    int sum = 0;
+                    for (int ky = -1; ky <= 1; ++ky)
+                    {
+                        int sy = BoundCoord(y + ky, height);
+                        for (int kx = -1; kx <= 1; ++kx)
+                        {
+                            int sx = BoundCoord(x + kx, width);
+                            int kernelIndex = (ky + 1) * 3 + (kx + 1);
+                            sum += input[PixelIndex(sx, sy, width, byteDepth, c)] * kernel[kernelIndex];
+                        }
+                    }
+                    output[PixelIndex(x, y, width, byteDepth, c)] = Clamp(sum / divisor + offset);
+                }
             }
         }
         CopyAlpha(input, output, length, byteDepth);

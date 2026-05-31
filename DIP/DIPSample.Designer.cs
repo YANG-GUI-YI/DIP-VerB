@@ -39,10 +39,16 @@ namespace DIP
             this.filterDetectToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.meanFilterToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.medianFilterToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.gaussianFilterToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.sharpenFilterToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.edgeFilterToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.laplacianFilterToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.prewittFilterToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.sobelFilterToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.customKernelToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.cannyEdgeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.houghLineToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.houghCircleToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.oFileDlg = new System.Windows.Forms.OpenFileDialog();
             this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
             this.statusStrip1.SuspendLayout();
@@ -214,10 +220,16 @@ namespace DIP
             this.filterDetectToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.meanFilterToolStripMenuItem,
             this.medianFilterToolStripMenuItem,
+            this.gaussianFilterToolStripMenuItem,
             this.sharpenFilterToolStripMenuItem,
             this.edgeFilterToolStripMenuItem,
             this.laplacianFilterToolStripMenuItem,
-            this.cannyEdgeToolStripMenuItem});
+            this.prewittFilterToolStripMenuItem,
+            this.sobelFilterToolStripMenuItem,
+            this.customKernelToolStripMenuItem,
+            this.cannyEdgeToolStripMenuItem,
+            this.houghLineToolStripMenuItem,
+            this.houghCircleToolStripMenuItem});
             this.filterDetectToolStripMenuItem.Name = "filterDetectToolStripMenuItem";
             this.filterDetectToolStripMenuItem.Size = new System.Drawing.Size(98, 24);
             this.filterDetectToolStripMenuItem.Text = "濾波與偵測";
@@ -235,6 +247,13 @@ namespace DIP
             this.medianFilterToolStripMenuItem.Size = new System.Drawing.Size(152, 26);
             this.medianFilterToolStripMenuItem.Text = "中值濾波";
             this.medianFilterToolStripMenuItem.Click += new System.EventHandler(this.medianFilterToolStripMenuItem_Click);
+            // 
+            // gaussianFilterToolStripMenuItem
+            // 
+            this.gaussianFilterToolStripMenuItem.Name = "gaussianFilterToolStripMenuItem";
+            this.gaussianFilterToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
+            this.gaussianFilterToolStripMenuItem.Text = "高斯濾波";
+            this.gaussianFilterToolStripMenuItem.Click += new System.EventHandler(this.gaussianFilterToolStripMenuItem_Click);
             // 
             // sharpenFilterToolStripMenuItem
             // 
@@ -254,8 +273,29 @@ namespace DIP
             // 
             this.laplacianFilterToolStripMenuItem.Name = "laplacianFilterToolStripMenuItem";
             this.laplacianFilterToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
-            this.laplacianFilterToolStripMenuItem.Text = "拉普拉斯濾波";
+            this.laplacianFilterToolStripMenuItem.Text = "拉普拉斯銳化";
             this.laplacianFilterToolStripMenuItem.Click += new System.EventHandler(this.laplacianFilterToolStripMenuItem_Click);
+            // 
+            // prewittFilterToolStripMenuItem
+            // 
+            this.prewittFilterToolStripMenuItem.Name = "prewittFilterToolStripMenuItem";
+            this.prewittFilterToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
+            this.prewittFilterToolStripMenuItem.Text = "Prewitt 濾波";
+            this.prewittFilterToolStripMenuItem.Click += new System.EventHandler(this.prewittFilterToolStripMenuItem_Click);
+            // 
+            // sobelFilterToolStripMenuItem
+            // 
+            this.sobelFilterToolStripMenuItem.Name = "sobelFilterToolStripMenuItem";
+            this.sobelFilterToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
+            this.sobelFilterToolStripMenuItem.Text = "Sobel 濾波";
+            this.sobelFilterToolStripMenuItem.Click += new System.EventHandler(this.sobelFilterToolStripMenuItem_Click);
+            // 
+            // customKernelToolStripMenuItem
+            // 
+            this.customKernelToolStripMenuItem.Name = "customKernelToolStripMenuItem";
+            this.customKernelToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
+            this.customKernelToolStripMenuItem.Text = "自定義 Kernel";
+            this.customKernelToolStripMenuItem.Click += new System.EventHandler(this.customKernelToolStripMenuItem_Click);
             // 
             // cannyEdgeToolStripMenuItem
             // 
@@ -263,6 +303,20 @@ namespace DIP
             this.cannyEdgeToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
             this.cannyEdgeToolStripMenuItem.Text = "Canny Edge Detection";
             this.cannyEdgeToolStripMenuItem.Click += new System.EventHandler(this.cannyEdgeToolStripMenuItem_Click);
+            // 
+            // houghLineToolStripMenuItem
+            // 
+            this.houghLineToolStripMenuItem.Name = "houghLineToolStripMenuItem";
+            this.houghLineToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
+            this.houghLineToolStripMenuItem.Text = "Hough Transform Line Detection";
+            this.houghLineToolStripMenuItem.Click += new System.EventHandler(this.houghLineToolStripMenuItem_Click);
+            // 
+            // houghCircleToolStripMenuItem
+            // 
+            this.houghCircleToolStripMenuItem.Name = "houghCircleToolStripMenuItem";
+            this.houghCircleToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
+            this.houghCircleToolStripMenuItem.Text = "Hough Transform Circle Detection";
+            this.houghCircleToolStripMenuItem.Click += new System.EventHandler(this.houghCircleToolStripMenuItem_Click);
             // 
             // oFileDlg
             // 
@@ -316,10 +370,16 @@ namespace DIP
         private System.Windows.Forms.ToolStripMenuItem filterDetectToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem meanFilterToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem medianFilterToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem gaussianFilterToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem sharpenFilterToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem edgeFilterToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem laplacianFilterToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem prewittFilterToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem sobelFilterToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem customKernelToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem cannyEdgeToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem houghLineToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem houghCircleToolStripMenuItem;
         private System.Windows.Forms.OpenFileDialog oFileDlg;
         private System.Windows.Forms.SaveFileDialog saveFileDialog1;
     }

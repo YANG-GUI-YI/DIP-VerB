@@ -42,6 +42,15 @@ namespace DIP
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private static extern void CannyEdgeDetection(IntPtr input, IntPtr output, int width, int height, int byteDepth);
 
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void HoughTransformLineDetection(IntPtr input, IntPtr output, int width, int height, int byteDepth);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void HoughTransformCircleDetection(IntPtr input, IntPtr output, int width, int height, int byteDepth);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void CustomKernelFilter(IntPtr input, IntPtr output, int width, int height, int byteDepth, IntPtr kernel, int divisor, int offset);
+
         private Bitmap NpBitmap;
         private int w, h;
 
@@ -250,6 +259,13 @@ namespace DIP
             childForm.Show();
         }
 
+        private void ShowImageWithHeader(Bitmap bitmap, string headerText)
+        {
+            HeaderImageForm childForm = new HeaderImageForm(bitmap, headerText, stStripLabel);
+            childForm.MdiParent = this;
+            childForm.Show();
+        }
+
         private int[] BuildHistogram(ImageContext context)
         {
             int[] histogram = new int[256];
@@ -290,6 +306,51 @@ namespace DIP
                 PixelFormat = pixelFormat,
                 Palette = palette
             });
+        }
+
+        private int ComputeOtsuThreshold(ImageContext context)
+        {
+            int[] histogram = BuildHistogram(context);
+            int total = context.Width * context.Height;
+            double sum = 0.0;
+            for (int i = 0; i < histogram.Length; i++)
+            {
+                sum += i * histogram[i];
+            }
+
+            double sumBackground = 0.0;
+            int weightBackground = 0;
+            int threshold = 0;
+            double maxVariance = -1.0;
+
+            for (int i = 0; i < histogram.Length; i++)
+            {
+                weightBackground += histogram[i];
+                if (weightBackground == 0)
+                {
+                    continue;
+                }
+
+                int weightForeground = total - weightBackground;
+                if (weightForeground == 0)
+                {
+                    break;
+                }
+
+                sumBackground += i * histogram[i];
+                double meanBackground = sumBackground / weightBackground;
+                double meanForeground = (sum - sumBackground) / weightForeground;
+                double diff = meanBackground - meanForeground;
+                double variance = weightBackground * weightForeground * diff * diff;
+
+                if (variance > maxVariance)
+                {
+                    maxVariance = variance;
+                    threshold = i;
+                }
+            }
+
+            return threshold;
         }
 
         private static int Clamp(int value)
@@ -338,8 +399,16 @@ namespace DIP
 
         private void otsuToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            ApplyImageOperation((input, output, width, height, byteDepth, length) =>
+            ImageContext context = GetActiveImageContext();
+            if (context == null)
+            {
+                return;
+            }
+
+            int threshold = ComputeOtsuThreshold(context);
+            NpBitmap = ProcessImage(context, (input, output, width, height, byteDepth, length) =>
                 OtsuThreshold(input, output, width, height, byteDepth));
+            ShowImageWithHeader(NpBitmap, "Otsu 閥值：" + threshold);
         }
 
         private void brightnessToolStripMenuItem_Click(object sender, EventArgs e)
@@ -517,6 +586,12 @@ namespace DIP
                 SpatialFilter(input, output, width, height, byteDepth, 1, 3));
         }
 
+        private void gaussianFilterToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ApplyImageOperation((input, output, width, height, byteDepth, length) =>
+                SpatialFilter(input, output, width, height, byteDepth, 7, 3));
+        }
+
         private void sharpenFilterToolStripMenuItem_Click(object sender, EventArgs e)
         {
             ApplyImageOperation((input, output, width, height, byteDepth, length) =>
@@ -535,10 +610,66 @@ namespace DIP
                 SpatialFilter(input, output, width, height, byteDepth, 4, 3));
         }
 
+        private void prewittFilterToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ApplyImageOperation((input, output, width, height, byteDepth, length) =>
+                SpatialFilter(input, output, width, height, byteDepth, 5, 3));
+        }
+
+        private void sobelFilterToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ApplyImageOperation((input, output, width, height, byteDepth, length) =>
+                SpatialFilter(input, output, width, height, byteDepth, 6, 3));
+        }
+
+        private void customKernelToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ImageContext context = GetActiveImageContext();
+            if (context == null)
+            {
+                return;
+            }
+
+            using (CustomKernelForm dialog = new CustomKernelForm())
+            {
+                if (dialog.ShowDialog(this) != DialogResult.OK)
+                {
+                    return;
+                }
+
+                int[] kernel = dialog.Kernel;
+                int divisor = dialog.Divisor;
+                int offset = dialog.Offset;
+                NpBitmap = ProcessImage(context, (input, output, width, height, byteDepth, length) =>
+                {
+                    unsafe
+                    {
+                        fixed (int* kernelPtr = kernel)
+                        {
+                            CustomKernelFilter(input, output, width, height, byteDepth, (IntPtr)kernelPtr, divisor, offset);
+                        }
+                    }
+                });
+                ShowImage(NpBitmap);
+            }
+        }
+
         private void cannyEdgeToolStripMenuItem_Click(object sender, EventArgs e)
         {
             ApplyImageOperation((input, output, width, height, byteDepth, length) =>
                 CannyEdgeDetection(input, output, width, height, byteDepth));
+        }
+
+        private void houghLineToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ApplyImageOperation((input, output, width, height, byteDepth, length) =>
+                HoughTransformLineDetection(input, output, width, height, byteDepth));
+        }
+
+        private void houghCircleToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ApplyImageOperation((input, output, width, height, byteDepth, length) =>
+                HoughTransformCircleDetection(input, output, width, height, byteDepth));
         }
 
         private void stStripLabel_Click(object sender, EventArgs e)
@@ -551,6 +682,57 @@ namespace DIP
 
         private void fileToolStripMenuItem_Click(object sender, EventArgs e)
         {
+        }
+
+        private sealed class HeaderImageForm : Form
+        {
+            private readonly Bitmap bitmap;
+            private readonly PictureBox pictureBox;
+            private readonly ToolStripStatusLabel statusLabel;
+
+            public HeaderImageForm(Bitmap bitmap, string headerText, ToolStripStatusLabel statusLabel)
+            {
+                this.bitmap = bitmap;
+                this.statusLabel = statusLabel;
+
+                Text = "Otsu 分割";
+                Width = bitmap.Width + 20;
+                Height = bitmap.Height + 72;
+                FormBorderStyle = FormBorderStyle.Fixed3D;
+                MaximizeBox = false;
+
+                Label headerLabel = new Label
+                {
+                    Dock = DockStyle.Top,
+                    Height = 32,
+                    Text = headerText,
+                    TextAlign = ContentAlignment.MiddleCenter
+                };
+
+                pictureBox = new PictureBox
+                {
+                    Dock = DockStyle.Fill,
+                    Image = bitmap,
+                    SizeMode = PictureBoxSizeMode.CenterImage
+                };
+                pictureBox.MouseMove += pictureBox_MouseMove;
+
+                Controls.Add(pictureBox);
+                Controls.Add(headerLabel);
+            }
+
+            private void pictureBox_MouseMove(object sender, MouseEventArgs e)
+            {
+                try
+                {
+                    Color pixel = bitmap.GetPixel(e.X, e.Y);
+                    statusLabel.Text = "(" + e.X + "," + e.Y + ")" +
+                                       "=(" + pixel.R + "," + pixel.G + "," + pixel.B + ")";
+                }
+                catch
+                {
+                }
+            }
         }
 
         private sealed class TrackPreviewForm : Form
@@ -688,6 +870,143 @@ namespace DIP
                 Controls.Add(textBox);
                 Controls.Add(okButton);
                 Controls.Add(cancelButton);
+            }
+        }
+
+        private sealed class CustomKernelForm : Form
+        {
+            private readonly TextBox[] kernelBoxes;
+            private readonly TextBox divisorBox;
+            private readonly TextBox offsetBox;
+            private readonly Button okButton;
+            private readonly Button cancelButton;
+
+            public int[] Kernel { get; private set; }
+            public int Divisor { get; private set; }
+            public int Offset { get; private set; }
+
+            public CustomKernelForm()
+            {
+                Text = "自定義 Kernel";
+                Width = 330;
+                Height = 260;
+                FormBorderStyle = FormBorderStyle.FixedDialog;
+                MaximizeBox = false;
+                MinimizeBox = false;
+                StartPosition = FormStartPosition.CenterParent;
+
+                Label titleLabel = new Label
+                {
+                    Left = 16,
+                    Top = 12,
+                    Width = 280,
+                    Text = "請輸入 3x3 kernel"
+                };
+                Controls.Add(titleLabel);
+
+                kernelBoxes = new TextBox[9];
+                int[] defaultKernel = { 0, -1, 0, -1, 5, -1, 0, -1, 0 };
+                for (int i = 0; i < 9; i++)
+                {
+                    kernelBoxes[i] = new TextBox
+                    {
+                        Left = 24 + (i % 3) * 58,
+                        Top = 40 + (i / 3) * 32,
+                        Width = 48,
+                        Text = defaultKernel[i].ToString()
+                    };
+                    Controls.Add(kernelBoxes[i]);
+                }
+
+                Label divisorLabel = new Label
+                {
+                    Left = 200,
+                    Top = 44,
+                    Width = 80,
+                    Text = "除數"
+                };
+                divisorBox = new TextBox
+                {
+                    Left = 200,
+                    Top = 66,
+                    Width = 80,
+                    Text = "1"
+                };
+
+                Label offsetLabel = new Label
+                {
+                    Left = 200,
+                    Top = 100,
+                    Width = 80,
+                    Text = "偏移"
+                };
+                offsetBox = new TextBox
+                {
+                    Left = 200,
+                    Top = 122,
+                    Width = 80,
+                    Text = "0"
+                };
+
+                okButton = new Button
+                {
+                    Left = 124,
+                    Top = 170,
+                    Width = 75,
+                    Text = "確認",
+                    DialogResult = DialogResult.OK
+                };
+                cancelButton = new Button
+                {
+                    Left = 206,
+                    Top = 170,
+                    Width = 75,
+                    Text = "取消",
+                    DialogResult = DialogResult.Cancel
+                };
+
+                okButton.Click += okButton_Click;
+                AcceptButton = okButton;
+                CancelButton = cancelButton;
+
+                Controls.Add(divisorLabel);
+                Controls.Add(divisorBox);
+                Controls.Add(offsetLabel);
+                Controls.Add(offsetBox);
+                Controls.Add(okButton);
+                Controls.Add(cancelButton);
+            }
+
+            private void okButton_Click(object sender, EventArgs e)
+            {
+                int[] kernel = new int[9];
+                for (int i = 0; i < kernelBoxes.Length; i++)
+                {
+                    if (!int.TryParse(kernelBoxes[i].Text, out kernel[i]))
+                    {
+                        MessageBox.Show("Kernel 只能輸入整數。", "DIP");
+                        DialogResult = DialogResult.None;
+                        return;
+                    }
+                }
+
+                if (!int.TryParse(divisorBox.Text, out int divisor) || divisor == 0)
+                {
+                    MessageBox.Show("除數必須是非 0 整數。", "DIP");
+                    DialogResult = DialogResult.None;
+                    return;
+                }
+
+                if (!int.TryParse(offsetBox.Text, out int offset))
+                {
+                    MessageBox.Show("偏移必須是整數。", "DIP");
+                    DialogResult = DialogResult.None;
+                    return;
+                }
+
+                Kernel = kernel;
+                Divisor = divisor;
+                Offset = offset;
             }
         }
 

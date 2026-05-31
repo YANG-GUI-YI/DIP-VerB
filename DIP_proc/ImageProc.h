@@ -14,4 +14,7 @@ extern "C"
     __declspec(dllexport) void OtsuThreshold(int* input, int* output, int width, int height, int byteDepth);
     __declspec(dllexport) void LineDetection(int* input, int* output, int width, int height, int byteDepth, int lineType);
     __declspec(dllexport) void CannyEdgeDetection(int* input, int* output, int width, int height, int byteDepth);
+    __declspec(dllexport) void HoughTransformLineDetection(int* input, int* output, int width, int height, int byteDepth);
+    __declspec(dllexport) void HoughTransformCircleDetection(int* input, int* output, int width, int height, int byteDepth);
+    __declspec(dllexport) void CustomKernelFilter(int* input, int* output, int width, int height, int byteDepth, int* kernel, int divisor, int offset);
 }
