@@ -43,6 +43,9 @@ namespace DIP
         private static extern void LineDetection(IntPtr input, IntPtr output, int width, int height, int byteDepth, int lineType);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void CannyEdgeDetection(IntPtr input, IntPtr output, int width, int height, int byteDepth);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private static extern void HoughTransformLineDetection(IntPtr input, IntPtr output, int width, int height, int byteDepth);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
@@ -53,6 +56,18 @@ namespace DIP
 
         private Bitmap NpBitmap;
         private int w, h;
+
+        private enum MappingMode
+        {
+            Inward,
+            Outward
+        }
+
+        private enum PixelInterpolationMode
+        {
+            NearestNeighbor,
+            Linear
+        }
 
         public DIPSample()
         {
@@ -506,7 +521,7 @@ namespace DIP
             }
 
             using (source)
-            using (ValueInputForm dialog = new ValueInputForm("放大縮小", "比例（%）：", "100"))
+            using (ValueInputForm dialog = new ValueInputForm("放大縮小", "比例（%）：", "100", true, true))
             {
                 if (dialog.ShowDialog(this) != DialogResult.OK)
                 {
@@ -515,7 +530,7 @@ namespace DIP
 
                 if (double.TryParse(dialog.InputValue, out double percent) && percent > 0)
                 {
-                    NpBitmap = ScaleBitmap(source, percent / 100.0);
+                    NpBitmap = ScaleBitmap(source, percent / 100.0, dialog.MappingMode, dialog.PixelInterpolationMode);
                     ShowImage(NpBitmap);
                 }
                 else
@@ -534,7 +549,7 @@ namespace DIP
             }
 
             using (source)
-            using (ValueInputForm dialog = new ValueInputForm("圖片旋轉", "角度：", "0"))
+            using (ValueInputForm dialog = new ValueInputForm("圖片旋轉", "角度：", "0", true, true))
             {
                 if (dialog.ShowDialog(this) != DialogResult.OK)
                 {
@@ -543,7 +558,7 @@ namespace DIP
 
                 if (double.TryParse(dialog.InputValue, out double angle))
                 {
-                    NpBitmap = RotateBitmap(source, angle);
+                    NpBitmap = RotateBitmap(source, angle, dialog.MappingMode, dialog.PixelInterpolationMode);
                     ShowImage(NpBitmap);
                 }
                 else
@@ -553,41 +568,238 @@ namespace DIP
             }
         }
 
-        private static Bitmap ScaleBitmap(Bitmap source, double scale)
+        private static Bitmap ScaleBitmap(Bitmap source, double scale, MappingMode mappingMode, PixelInterpolationMode interpolationMode)
         {
             int newWidth = Math.Max(1, (int)Math.Round(source.Width * scale));
             int newHeight = Math.Max(1, (int)Math.Round(source.Height * scale));
             Bitmap result = new Bitmap(newWidth, newHeight, PixelFormat.Format24bppRgb);
+
             using (Graphics g = Graphics.FromImage(result))
             {
                 g.Clear(Color.White);
-                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                g.DrawImage(source, new Rectangle(0, 0, newWidth, newHeight));
+            }
+
+            if (mappingMode == MappingMode.Inward)
+            {
+                for (int y = 0; y < newHeight; ++y)
+                {
+                    double sourceY = (y + 0.5) / scale - 0.5;
+                    for (int x = 0; x < newWidth; ++x)
+                    {
+                        double sourceX = (x + 0.5) / scale - 0.5;
+                        result.SetPixel(x, y, SamplePixel(source, sourceX, sourceY, interpolationMode));
+                    }
+                }
+            }
+            else
+            {
+                for (int y = 0; y < source.Height; ++y)
+                {
+                    int targetY = (int)Math.Round((y + 0.5) * scale - 0.5);
+                    for (int x = 0; x < source.Width; ++x)
+                    {
+                        int targetX = (int)Math.Round((x + 0.5) * scale - 0.5);
+                        if (targetX >= 0 && targetX < newWidth && targetY >= 0 && targetY < newHeight)
+                        {
+                            result.SetPixel(targetX, targetY, source.GetPixel(x, y));
+                        }
+                    }
+                }
             }
             return result;
         }
 
-        private static Bitmap RotateBitmap(Bitmap source, double angle)
+        private static Bitmap RotateBitmap(Bitmap source, double angle, MappingMode mappingMode, PixelInterpolationMode interpolationMode)
         {
             double radians = angle * Math.PI / 180.0;
-            double cos = Math.Abs(Math.Cos(radians));
-            double sin = Math.Abs(Math.Sin(radians));
-            int newWidth = Math.Max(1, (int)Math.Ceiling(source.Width * cos + source.Height * sin));
-            int newHeight = Math.Max(1, (int)Math.Ceiling(source.Width * sin + source.Height * cos));
+            double cos = Math.Cos(radians);
+            double sin = Math.Sin(radians);
+            int newWidth = Math.Max(1, (int)Math.Ceiling(source.Width * Math.Abs(cos) + source.Height * Math.Abs(sin)));
+            int newHeight = Math.Max(1, (int)Math.Ceiling(source.Width * Math.Abs(sin) + source.Height * Math.Abs(cos)));
 
             Bitmap result = new Bitmap(newWidth, newHeight, PixelFormat.Format24bppRgb);
             using (Graphics g = Graphics.FromImage(result))
             {
                 g.Clear(Color.White);
-                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                g.TranslateTransform(newWidth / 2f, newHeight / 2f);
-                g.RotateTransform((float)angle);
-                g.TranslateTransform(-source.Width / 2f, -source.Height / 2f);
-                g.DrawImage(source, new PointF(0, 0));
+            }
+
+            double sourceCenterX = (source.Width - 1) / 2.0;
+            double sourceCenterY = (source.Height - 1) / 2.0;
+            double resultCenterX = (newWidth - 1) / 2.0;
+            double resultCenterY = (newHeight - 1) / 2.0;
+
+            if (mappingMode == MappingMode.Inward)
+            {
+                for (int y = 0; y < newHeight; ++y)
+                {
+                    double dy = y - resultCenterY;
+                    for (int x = 0; x < newWidth; ++x)
+                    {
+                        double dx = x - resultCenterX;
+                        double sourceX = dx * cos + dy * sin + sourceCenterX;
+                        double sourceY = -dx * sin + dy * cos + sourceCenterY;
+                        if (sourceX >= 0 && sourceX <= source.Width - 1 && sourceY >= 0 && sourceY <= source.Height - 1)
+                        {
+                            result.SetPixel(x, y, SamplePixel(source, sourceX, sourceY, interpolationMode));
+                        }
+                    }
+                }
+            }
+            else if (interpolationMode == PixelInterpolationMode.Linear)
+            {
+                double[] blue = new double[newWidth * newHeight];
+                double[] green = new double[newWidth * newHeight];
+                double[] red = new double[newWidth * newHeight];
+                double[] weight = new double[newWidth * newHeight];
+
+                for (int y = 0; y < source.Height; ++y)
+                {
+                    double dy = y - sourceCenterY;
+                    for (int x = 0; x < source.Width; ++x)
+                    {
+                        double dx = x - sourceCenterX;
+                        double targetX = dx * cos - dy * sin + resultCenterX;
+                        double targetY = dx * sin + dy * cos + resultCenterY;
+                        AddLinearSample(source.GetPixel(x, y), targetX, targetY, newWidth, newHeight, blue, green, red, weight);
+                    }
+                }
+
+                WriteAccumulatedPixels(result, blue, green, red, weight);
+            }
+            else
+            {
+                for (int y = 0; y < source.Height; ++y)
+                {
+                    double dy = y - sourceCenterY;
+                    for (int x = 0; x < source.Width; ++x)
+                    {
+                        double dx = x - sourceCenterX;
+                        int targetX = (int)Math.Round(dx * cos - dy * sin + resultCenterX);
+                        int targetY = (int)Math.Round(dx * sin + dy * cos + resultCenterY);
+                        if (targetX >= 0 && targetX < newWidth && targetY >= 0 && targetY < newHeight)
+                        {
+                            result.SetPixel(targetX, targetY, source.GetPixel(x, y));
+                        }
+                    }
+                }
             }
             return result;
+        }
+
+        private static Color SamplePixel(Bitmap source, double x, double y, PixelInterpolationMode interpolationMode)
+        {
+            if (interpolationMode == PixelInterpolationMode.NearestNeighbor)
+            {
+                int nearestX = ClampCoord((int)Math.Round(x), source.Width);
+                int nearestY = ClampCoord((int)Math.Round(y), source.Height);
+                return source.GetPixel(nearestX, nearestY);
+            }
+
+            return SampleLinear(source, x, y);
+        }
+
+        private static Color SampleLinear(Bitmap source, double x, double y)
+        {
+            x = Math.Max(0.0, Math.Min(source.Width - 1.0, x));
+            y = Math.Max(0.0, Math.Min(source.Height - 1.0, y));
+
+            int x0 = ClampCoord((int)Math.Floor(x), source.Width);
+            int y0 = ClampCoord((int)Math.Floor(y), source.Height);
+            int x1 = ClampCoord(x0 + 1, source.Width);
+            int y1 = ClampCoord(y0 + 1, source.Height);
+            double tx = x - x0;
+            double ty = y - y0;
+
+            Color c00 = source.GetPixel(x0, y0);
+            Color c10 = source.GetPixel(x1, y0);
+            Color c01 = source.GetPixel(x0, y1);
+            Color c11 = source.GetPixel(x1, y1);
+
+            int r = ClampColor(
+                c00.R * (1.0 - tx) * (1.0 - ty) +
+                c10.R * tx * (1.0 - ty) +
+                c01.R * (1.0 - tx) * ty +
+                c11.R * tx * ty);
+            int g = ClampColor(
+                c00.G * (1.0 - tx) * (1.0 - ty) +
+                c10.G * tx * (1.0 - ty) +
+                c01.G * (1.0 - tx) * ty +
+                c11.G * tx * ty);
+            int b = ClampColor(
+                c00.B * (1.0 - tx) * (1.0 - ty) +
+                c10.B * tx * (1.0 - ty) +
+                c01.B * (1.0 - tx) * ty +
+                c11.B * tx * ty);
+
+            return Color.FromArgb(r, g, b);
+        }
+
+        private static void AddLinearSample(Color color, double x, double y, int width, int height, double[] blue, double[] green, double[] red, double[] weight)
+        {
+            int x0 = (int)Math.Floor(x);
+            int y0 = (int)Math.Floor(y);
+            double tx = x - x0;
+            double ty = y - y0;
+
+            AddWeightedPixel(color, x0, y0, (1.0 - tx) * (1.0 - ty), width, height, blue, green, red, weight);
+            AddWeightedPixel(color, x0 + 1, y0, tx * (1.0 - ty), width, height, blue, green, red, weight);
+            AddWeightedPixel(color, x0, y0 + 1, (1.0 - tx) * ty, width, height, blue, green, red, weight);
+            AddWeightedPixel(color, x0 + 1, y0 + 1, tx * ty, width, height, blue, green, red, weight);
+        }
+
+        private static void AddWeightedPixel(Color color, int x, int y, double sampleWeight, int width, int height, double[] blue, double[] green, double[] red, double[] weight)
+        {
+            if (sampleWeight <= 0.0 || x < 0 || x >= width || y < 0 || y >= height)
+            {
+                return;
+            }
+
+            int index = y * width + x;
+            blue[index] += color.B * sampleWeight;
+            green[index] += color.G * sampleWeight;
+            red[index] += color.R * sampleWeight;
+            weight[index] += sampleWeight;
+        }
+
+        private static void WriteAccumulatedPixels(Bitmap result, double[] blue, double[] green, double[] red, double[] weight)
+        {
+            for (int y = 0; y < result.Height; ++y)
+            {
+                for (int x = 0; x < result.Width; ++x)
+                {
+                    int index = y * result.Width + x;
+                    if (weight[index] <= 0.0)
+                    {
+                        continue;
+                    }
+
+                    result.SetPixel(
+                        x,
+                        y,
+                        Color.FromArgb(
+                            ClampColor(red[index] / weight[index]),
+                            ClampColor(green[index] / weight[index]),
+                            ClampColor(blue[index] / weight[index])));
+                }
+            }
+        }
+
+        private static int ClampColor(double value)
+        {
+            return Math.Max(0, Math.Min(255, (int)Math.Round(value)));
+        }
+
+        private static int ClampCoord(int value, int upper)
+        {
+            if (value < 0)
+            {
+                return 0;
+            }
+            if (value >= upper)
+            {
+                return upper - 1;
+            }
+            return value;
         }
 
         private void meanFilterToolStripMenuItem_Click(object sender, EventArgs e)
@@ -662,6 +874,12 @@ namespace DIP
                 });
                 ShowImage(NpBitmap);
             }
+        }
+
+        private void cannyEdgeToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ApplyImageOperation((input, output, width, height, byteDepth, length) =>
+                CannyEdgeDetection(input, output, width, height, byteDepth));
         }
 
         private void houghLineToolStripMenuItem_Click(object sender, EventArgs e)
@@ -815,6 +1033,10 @@ namespace DIP
         private sealed class ValueInputForm : Form
         {
             private readonly TextBox textBox;
+            private readonly RadioButton inwardRadioButton;
+            private readonly RadioButton outwardRadioButton;
+            private readonly RadioButton nearestRadioButton;
+            private readonly RadioButton linearRadioButton;
             private readonly Button okButton;
             private readonly Button cancelButton;
 
@@ -823,11 +1045,38 @@ namespace DIP
                 get { return textBox.Text; }
             }
 
+            public MappingMode MappingMode
+            {
+                get { return outwardRadioButton != null && outwardRadioButton.Checked ? MappingMode.Outward : MappingMode.Inward; }
+            }
+
+            public PixelInterpolationMode PixelInterpolationMode
+            {
+                get
+                {
+                    if (outwardRadioButton != null && outwardRadioButton.Checked)
+                    {
+                        return DIPSample.PixelInterpolationMode.NearestNeighbor;
+                    }
+                    return linearRadioButton != null && linearRadioButton.Checked ? DIPSample.PixelInterpolationMode.Linear : DIPSample.PixelInterpolationMode.NearestNeighbor;
+                }
+            }
+
             public ValueInputForm(string title, string labelText, string defaultValue)
+                : this(title, labelText, defaultValue, false, false)
+            {
+            }
+
+            public ValueInputForm(string title, string labelText, string defaultValue, bool showMappingOptions)
+                : this(title, labelText, defaultValue, showMappingOptions, false)
+            {
+            }
+
+            public ValueInputForm(string title, string labelText, string defaultValue, bool showMappingOptions, bool showInterpolationOptions)
             {
                 Text = title;
                 Width = 320;
-                Height = 150;
+                Height = showMappingOptions || showInterpolationOptions ? 306 : 150;
                 FormBorderStyle = FormBorderStyle.FixedDialog;
                 MaximizeBox = false;
                 MinimizeBox = false;
@@ -849,10 +1098,86 @@ namespace DIP
                     Text = defaultValue
                 };
 
+                int buttonTop = 78;
+                if (showMappingOptions)
+                {
+                    GroupBox mappingGroup = new GroupBox
+                    {
+                        Left = 16,
+                        Top = 78,
+                        Width = 270,
+                        Height = 72,
+                        Text = "映射方式"
+                    };
+
+                    inwardRadioButton = new RadioButton
+                    {
+                        Left = 16,
+                        Top = 28,
+                        Width = 100,
+                        Text = "內向映射",
+                        Checked = true
+                    };
+
+                    outwardRadioButton = new RadioButton
+                    {
+                        Left = 134,
+                        Top = 28,
+                        Width = 100,
+                        Text = "外向映射"
+                    };
+
+                    mappingGroup.Controls.Add(inwardRadioButton);
+                    mappingGroup.Controls.Add(outwardRadioButton);
+                    Controls.Add(mappingGroup);
+                    buttonTop = 158;
+                }
+
+                if (showInterpolationOptions)
+                {
+                    GroupBox interpolationGroup = new GroupBox
+                    {
+                        Left = 16,
+                        Top = showMappingOptions ? 154 : 78,
+                        Width = 270,
+                        Height = 72,
+                        Text = "內插方式"
+                    };
+
+                    nearestRadioButton = new RadioButton
+                    {
+                        Left = 16,
+                        Top = 28,
+                        Width = 120,
+                        Text = "Nearest-Neighbor",
+                        Checked = true
+                    };
+
+                    linearRadioButton = new RadioButton
+                    {
+                        Left = 148,
+                        Top = 28,
+                        Width = 100,
+                        Text = "Linear"
+                    };
+
+                    interpolationGroup.Controls.Add(nearestRadioButton);
+                    interpolationGroup.Controls.Add(linearRadioButton);
+                    Controls.Add(interpolationGroup);
+                    buttonTop = showMappingOptions ? 234 : 158;
+                }
+
+                if (showMappingOptions && showInterpolationOptions)
+                {
+                    inwardRadioButton.CheckedChanged += delegate { UpdateInterpolationControls(); };
+                    outwardRadioButton.CheckedChanged += delegate { UpdateInterpolationControls(); };
+                    UpdateInterpolationControls();
+                }
+
                 okButton = new Button
                 {
                     Left = 130,
-                    Top = 78,
+                    Top = buttonTop,
                     Width = 75,
                     Text = "確認",
                     DialogResult = DialogResult.OK
@@ -861,7 +1186,7 @@ namespace DIP
                 cancelButton = new Button
                 {
                     Left = 212,
-                    Top = 78,
+                    Top = buttonTop,
                     Width = 75,
                     Text = "取消",
                     DialogResult = DialogResult.Cancel
@@ -874,6 +1199,23 @@ namespace DIP
                 Controls.Add(textBox);
                 Controls.Add(okButton);
                 Controls.Add(cancelButton);
+            }
+
+            private void UpdateInterpolationControls()
+            {
+                bool enabled = inwardRadioButton == null || inwardRadioButton.Checked;
+                if (nearestRadioButton != null)
+                {
+                    nearestRadioButton.Enabled = enabled;
+                    if (!enabled)
+                    {
+                        nearestRadioButton.Checked = true;
+                    }
+                }
+                if (linearRadioButton != null)
+                {
+                    linearRadioButton.Enabled = enabled;
+                }
             }
         }
 

@@ -837,7 +837,6 @@ extern "C"
             int rho;
         };
 
-        std::vector<HoughLine> candidates;
         int maxVotes = 1;
         for (int theta = 0; theta < thetaCount; ++theta)
         {
@@ -848,33 +847,116 @@ extern "C"
             }
         }
 
-        int voteThreshold = MaxInt(30, maxVotes * 45 / 100);
-        for (int theta = 0; theta < thetaCount; ++theta)
+        int voteThreshold = MaxInt(20, maxVotes * 45 / 100);
+        std::vector<int> suppressedAccumulator = accumulator;
+        std::vector<HoughLine> selectedLines;
+        int maxLines = 24;
+        while (static_cast<int>(selectedLines.size()) < maxLines)
         {
-            for (int rho = 0; rho < rhoCount; ++rho)
+            int bestVotes = 0;
+            int bestTheta = 0;
+            int bestRho = 0;
+            for (int theta = 0; theta < thetaCount; ++theta)
             {
-                int votes = accumulator[theta * rhoCount + rho];
-                if (votes >= voteThreshold)
+                for (int rho = 0; rho < rhoCount; ++rho)
                 {
-                    candidates.push_back({ votes, theta, rho - rhoMax });
+                    int votes = suppressedAccumulator[theta * rhoCount + rho];
+                    if (votes > bestVotes)
+                    {
+                        bestVotes = votes;
+                        bestTheta = theta;
+                        bestRho = rho;
+                    }
+                }
+            }
+
+            if (bestVotes < voteThreshold)
+            {
+                break;
+            }
+
+            selectedLines.push_back({ bestVotes, bestTheta, bestRho - rhoMax });
+
+            for (int dt = -8; dt <= 8; ++dt)
+            {
+                int theta = (bestTheta + dt + thetaCount) % thetaCount;
+                for (int dr = -14; dr <= 14; ++dr)
+                {
+                    int rho = bestRho + dr;
+                    if (rho >= 0 && rho < rhoCount)
+                    {
+                        suppressedAccumulator[theta * rhoCount + rho] = 0;
+                    }
                 }
             }
         }
 
-        std::sort(candidates.begin(), candidates.end(), [](const HoughLine& left, const HoughLine& right) {
-            return left.votes > right.votes;
-        });
-
-        if (!candidates.empty())
+        int minSegmentLength = MaxInt(8, MinInt(width, height) / 12);
+        for (size_t i = 0; i < selectedLines.size(); ++i)
         {
-            int theta = candidates[0].theta;
-            int rho = candidates[0].rho;
+            int theta = selectedLines[i].theta;
+            int rho = selectedLines[i].rho;
             double cosTheta = cosTable[theta];
             double sinTheta = sinTable[theta];
+            int start = 0;
+            int end = 0;
+            bool hasSegment = false;
 
             if (std::fabs(sinTheta) > std::fabs(cosTheta))
             {
-                for (int x = 0; x < width; ++x)
+                start = width;
+                end = -1;
+                for (int y = 0; y < height; ++y)
+                {
+                    for (int x = 0; x < width; ++x)
+                    {
+                        if (magnitude[y * width + x] < edgeThreshold)
+                        {
+                            continue;
+                        }
+
+                        double distance = std::fabs(x * cosTheta + y * sinTheta - rho);
+                        if (distance <= 1.5)
+                        {
+                            start = MinInt(start, x);
+                            end = MaxInt(end, x);
+                        }
+                    }
+                }
+                hasSegment = end >= start && (end - start + 1) >= minSegmentLength;
+            }
+            else
+            {
+                start = height;
+                end = -1;
+                for (int y = 0; y < height; ++y)
+                {
+                    for (int x = 0; x < width; ++x)
+                    {
+                        if (magnitude[y * width + x] < edgeThreshold)
+                        {
+                            continue;
+                        }
+
+                        double distance = std::fabs(x * cosTheta + y * sinTheta - rho);
+                        if (distance <= 1.5)
+                        {
+                            start = MinInt(start, y);
+                            end = MaxInt(end, y);
+                        }
+                    }
+                }
+                hasSegment = end >= start && (end - start + 1) >= minSegmentLength;
+            }
+
+            if (!hasSegment)
+            {
+                continue;
+            }
+
+            if (std::fabs(sinTheta) > std::fabs(cosTheta))
+            {
+                for (int x = start; x <= end; ++x)
                 {
                     int y = static_cast<int>(std::round((rho - x * cosTheta) / sinTheta));
                     SetRedPixel(output, x, y, width, height, byteDepth);
@@ -882,7 +964,7 @@ extern "C"
             }
             else
             {
-                for (int y = 0; y < height; ++y)
+                for (int y = start; y <= end; ++y)
                 {
                     int x = static_cast<int>(std::round((rho - y * sinTheta) / cosTheta));
                     SetRedPixel(output, x, y, width, height, byteDepth);
@@ -945,22 +1027,27 @@ extern "C"
         }
 
         int minDimension = MinInt(width, height);
-        int minRadius = MaxInt(8, minDimension / 12);
+        int minRadius = MaxInt(6, minDimension / 20);
         int maxRadius = MaxInt(minRadius + 1, minDimension / 2);
-        int radiusStep = MaxInt(2, minDimension / 80);
+        int radiusStep = MaxInt(2, minDimension / 90);
         int angleStep = 10;
         int edgeThreshold = MaxInt(50, maxMagnitude * 35 / 100);
 
-        int bestX = 0;
-        int bestY = 0;
-        int bestRadius = 0;
-        int bestVotes = 0;
         const double pi = 3.14159265358979323846;
+        struct HoughCircle
+        {
+            int votes;
+            int x;
+            int y;
+            int radius;
+        };
 
         std::vector<int> accumulator(total, 0);
+        std::vector<HoughCircle> candidates;
         for (int radius = minRadius; radius <= maxRadius; radius += radiusStep)
         {
             std::fill(accumulator.begin(), accumulator.end(), 0);
+            int radiusMaxVotes = 1;
 
             for (int y = 0; y < height; ++y)
             {
@@ -979,26 +1066,108 @@ extern "C"
                         if (cx >= 0 && cx < width && cy >= 0 && cy < height)
                         {
                             int votes = ++accumulator[cy * width + cx];
-                            if (votes > bestVotes)
-                            {
-                                bestVotes = votes;
-                                bestX = cx;
-                                bestY = cy;
-                                bestRadius = radius;
-                            }
+                            radiusMaxVotes = MaxInt(radiusMaxVotes, votes);
+                        }
+                    }
+                }
+            }
+
+            int radiusThreshold = MaxInt(12, radiusMaxVotes * 45 / 100);
+            std::vector<int> suppressedAccumulator = accumulator;
+            int maxCentersPerRadius = 12;
+            int selectedCenters = 0;
+            while (selectedCenters < maxCentersPerRadius)
+            {
+                int bestVotes = 0;
+                int bestX = 0;
+                int bestY = 0;
+                for (int cy = 0; cy < height; ++cy)
+                {
+                    for (int cx = 0; cx < width; ++cx)
+                    {
+                        int votes = suppressedAccumulator[cy * width + cx];
+                        if (votes > bestVotes)
+                        {
+                            bestVotes = votes;
+                            bestX = cx;
+                            bestY = cy;
+                        }
+                    }
+                }
+
+                if (bestVotes < radiusThreshold)
+                {
+                    break;
+                }
+
+                candidates.push_back({ bestVotes, bestX, bestY, radius });
+                selectedCenters++;
+
+                int suppressRadius = MaxInt(radiusStep * 2, radius / 5);
+                for (int dy = -suppressRadius; dy <= suppressRadius; ++dy)
+                {
+                    int neighborY = bestY + dy;
+                    if (neighborY < 0 || neighborY >= height)
+                    {
+                        continue;
+                    }
+
+                    for (int dx = -suppressRadius; dx <= suppressRadius; ++dx)
+                    {
+                        int neighborX = bestX + dx;
+                        if (neighborX < 0 || neighborX >= width)
+                        {
+                            continue;
+                        }
+
+                        if (dx * dx + dy * dy <= suppressRadius * suppressRadius)
+                        {
+                            suppressedAccumulator[neighborY * width + neighborX] = 0;
                         }
                     }
                 }
             }
         }
 
-        if (bestVotes > 0)
+        std::sort(candidates.begin(), candidates.end(), [](const HoughCircle& left, const HoughCircle& right) {
+            return left.votes > right.votes;
+        });
+
+        std::vector<HoughCircle> selectedCircles;
+        int maxCircles = 20;
+        for (size_t i = 0; i < candidates.size() && static_cast<int>(selectedCircles.size()) < maxCircles; ++i)
         {
+            const HoughCircle& candidate = candidates[i];
+            bool duplicate = false;
+            int centerTolerance = MaxInt(8, candidate.radius / 3);
+            int radiusTolerance = MaxInt(radiusStep * 2, candidate.radius / 5);
+
+            for (size_t j = 0; j < selectedCircles.size(); ++j)
+            {
+                int dx = candidate.x - selectedCircles[j].x;
+                int dy = candidate.y - selectedCircles[j].y;
+                int radiusDiff = std::abs(candidate.radius - selectedCircles[j].radius);
+                if (dx * dx + dy * dy <= centerTolerance * centerTolerance && radiusDiff <= radiusTolerance)
+                {
+                    duplicate = true;
+                    break;
+                }
+            }
+
+            if (!duplicate)
+            {
+                selectedCircles.push_back(candidate);
+            }
+        }
+
+        for (size_t i = 0; i < selectedCircles.size(); ++i)
+        {
+            const HoughCircle& circle = selectedCircles[i];
             for (int angle = 0; angle < 360; ++angle)
             {
                 double radians = angle * pi / 180.0;
-                int x = static_cast<int>(std::round(bestX + bestRadius * std::cos(radians)));
-                int y = static_cast<int>(std::round(bestY + bestRadius * std::sin(radians)));
+                int x = static_cast<int>(std::round(circle.x + circle.radius * std::cos(radians)));
+                int y = static_cast<int>(std::round(circle.y + circle.radius * std::sin(radians)));
                 SetRedPixel(output, x, y, width, height, byteDepth);
             }
         }
