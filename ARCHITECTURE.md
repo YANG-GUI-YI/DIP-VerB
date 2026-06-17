@@ -101,7 +101,7 @@ int[] 結果轉回 Bitmap
 | `OtsuThreshold` | Otsu 自動閥值分割。 |
 | `LineDetection` | 舊版線偵測函式。 |
 | `CannyEdgeDetection` | Canny 邊緣偵測。 |
-| `HoughTransformLineDetection` | Hough Transform 多直線偵測，以最大峰值、NMS、threshold 迭代取線，依邊緣範圍裁切後以紅線標示。 |
+| `HoughTransformLineDetection` | Hough Transform 多直線偵測，以最大峰值、NMS、threshold 迭代取線，並依 gap 判斷切成多段紅色線段。 |
 | `HoughTransformCircleDetection` | Hough Transform 多圓形偵測，以最大峰值、NMS、threshold 迭代取圓，結果以紅圈標示。 |
 
 ### SpatialFilter 類型

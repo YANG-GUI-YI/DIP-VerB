@@ -847,10 +847,10 @@ extern "C"
             }
         }
 
-        int voteThreshold = MaxInt(20, maxVotes * 45 / 100);
+        int voteThreshold = MaxInt(18, maxVotes * 35 / 100);
         std::vector<int> suppressedAccumulator = accumulator;
         std::vector<HoughLine> selectedLines;
-        int maxLines = 24;
+        int maxLines = 12;
         while (static_cast<int>(selectedLines.size()) < maxLines)
         {
             int bestVotes = 0;
@@ -891,21 +891,18 @@ extern "C"
             }
         }
 
-        int minSegmentLength = MaxInt(8, MinInt(width, height) / 12);
+        int minSegmentLength = MaxInt(15, MinInt(width, height) / 10);
+        int maxGap = MaxInt(4, MinInt(width, height) / 40);
         for (size_t i = 0; i < selectedLines.size(); ++i)
         {
             int theta = selectedLines[i].theta;
             int rho = selectedLines[i].rho;
             double cosTheta = cosTable[theta];
             double sinTheta = sinTable[theta];
-            int start = 0;
-            int end = 0;
-            bool hasSegment = false;
 
             if (std::fabs(sinTheta) > std::fabs(cosTheta))
             {
-                start = width;
-                end = -1;
+                std::vector<unsigned char> support(width, 0);
                 for (int y = 0; y < height; ++y)
                 {
                     for (int x = 0; x < width; ++x)
@@ -918,17 +915,77 @@ extern "C"
                         double distance = std::fabs(x * cosTheta + y * sinTheta - rho);
                         if (distance <= 1.5)
                         {
-                            start = MinInt(start, x);
-                            end = MaxInt(end, x);
+                            support[x] = 1;
                         }
                     }
                 }
-                hasSegment = end >= start && (end - start + 1) >= minSegmentLength;
+
+                int segmentStart = -1;
+                int lastSupport = -1;
+                for (int x = 0; x < width; ++x)
+                {
+                    if (support[x])
+                    {
+                        if (segmentStart < 0)
+                        {
+                            segmentStart = x;
+                        }
+                        lastSupport = x;
+                        continue;
+                    }
+
+                    if (segmentStart >= 0 && x - lastSupport > maxGap)
+                    {
+                        int segmentLength = lastSupport - segmentStart + 1;
+                        int supportCount = 0;
+                        for (int k = segmentStart; k <= lastSupport; ++k)
+                        {
+                            if (support[k])
+                            {
+                                supportCount++;
+                            }
+                        }
+
+                        double density = static_cast<double>(supportCount) / static_cast<double>(segmentLength);
+                        if (density >= 0.6 && segmentLength >= minSegmentLength)
+                        {
+                            for (int drawX = segmentStart; drawX <= lastSupport; ++drawX)
+                            {
+                                int drawY = static_cast<int>(std::round((rho - drawX * cosTheta) / sinTheta));
+                                SetRedPixel(output, drawX, drawY, width, height, byteDepth);
+                            }
+                        }
+                        segmentStart = -1;
+                        lastSupport = -1;
+                    }
+                }
+
+                if (segmentStart >= 0)
+                {
+                    int segmentLength = lastSupport - segmentStart + 1;
+                    int supportCount = 0;
+                    for (int k = segmentStart; k <= lastSupport; ++k)
+                    {
+                        if (support[k])
+                        {
+                            supportCount++;
+                        }
+                    }
+
+                    double density = static_cast<double>(supportCount) / static_cast<double>(segmentLength);
+                    if (density >= 0.6 && segmentLength >= minSegmentLength)
+                    {
+                        for (int drawX = segmentStart; drawX <= lastSupport; ++drawX)
+                        {
+                            int drawY = static_cast<int>(std::round((rho - drawX * cosTheta) / sinTheta));
+                            SetRedPixel(output, drawX, drawY, width, height, byteDepth);
+                        }
+                    }
+                }
             }
             else
             {
-                start = height;
-                end = -1;
+                std::vector<unsigned char> support(height, 0);
                 for (int y = 0; y < height; ++y)
                 {
                     for (int x = 0; x < width; ++x)
@@ -941,33 +998,72 @@ extern "C"
                         double distance = std::fabs(x * cosTheta + y * sinTheta - rho);
                         if (distance <= 1.5)
                         {
-                            start = MinInt(start, y);
-                            end = MaxInt(end, y);
+                            support[y] = 1;
                         }
                     }
                 }
-                hasSegment = end >= start && (end - start + 1) >= minSegmentLength;
-            }
 
-            if (!hasSegment)
-            {
-                continue;
-            }
-
-            if (std::fabs(sinTheta) > std::fabs(cosTheta))
-            {
-                for (int x = start; x <= end; ++x)
+                int segmentStart = -1;
+                int lastSupport = -1;
+                for (int y = 0; y < height; ++y)
                 {
-                    int y = static_cast<int>(std::round((rho - x * cosTheta) / sinTheta));
-                    SetRedPixel(output, x, y, width, height, byteDepth);
+                    if (support[y])
+                    {
+                        if (segmentStart < 0)
+                        {
+                            segmentStart = y;
+                        }
+                        lastSupport = y;
+                        continue;
+                    }
+
+                    if (segmentStart >= 0 && y - lastSupport > maxGap)
+                    {
+                        int segmentLength = lastSupport - segmentStart + 1;
+                        int supportCount = 0;
+                        for (int k = segmentStart; k <= lastSupport; ++k)
+                        {
+                            if (support[k])
+                            {
+                                supportCount++;
+                            }
+                        }
+
+                        double density = static_cast<double>(supportCount) / static_cast<double>(segmentLength);
+                        if (density >= 0.6 && segmentLength >= minSegmentLength)
+                        {
+                            for (int drawY = segmentStart; drawY <= lastSupport; ++drawY)
+                            {
+                                int drawX = static_cast<int>(std::round((rho - drawY * sinTheta) / cosTheta));
+                                SetRedPixel(output, drawX, drawY, width, height, byteDepth);
+                            }
+                        }
+                        segmentStart = -1;
+                        lastSupport = -1;
+                    }
                 }
-            }
-            else
-            {
-                for (int y = start; y <= end; ++y)
+
+                if (segmentStart >= 0)
                 {
-                    int x = static_cast<int>(std::round((rho - y * sinTheta) / cosTheta));
-                    SetRedPixel(output, x, y, width, height, byteDepth);
+                    int segmentLength = lastSupport - segmentStart + 1;
+                    int supportCount = 0;
+                    for (int k = segmentStart; k <= lastSupport; ++k)
+                    {
+                        if (support[k])
+                        {
+                            supportCount++;
+                        }
+                    }
+
+                    double density = static_cast<double>(supportCount) / static_cast<double>(segmentLength);
+                    if (density >= 0.6 && segmentLength >= minSegmentLength)
+                    {
+                        for (int drawY = segmentStart; drawY <= lastSupport; ++drawY)
+                        {
+                            int drawX = static_cast<int>(std::round((rho - drawY * sinTheta) / cosTheta));
+                            SetRedPixel(output, drawX, drawY, width, height, byteDepth);
+                        }
+                    }
                 }
             }
         }
