@@ -402,7 +402,7 @@ namespace DIP
             }
 
             TrackPreviewForm dialog = new TrackPreviewForm(
-                "雿???",
+                "位元切片",
                 1,
                 8,
                 1,
@@ -423,7 +423,7 @@ namespace DIP
             int threshold = ComputeOtsuThreshold(context);
             NpBitmap = ProcessImage(context, (input, output, width, height, byteDepth, length) =>
                 OtsuThreshold(input, output, width, height, byteDepth));
-            ShowImageWithHeader(NpBitmap, "Otsu ?亙潘?" + threshold);
+            ShowImageWithHeader(NpBitmap, "Otsu 閥值：" + threshold);
         }
 
         private void brightnessToolStripMenuItem_Click(object sender, EventArgs e)
@@ -435,7 +435,7 @@ namespace DIP
             }
 
             TrackPreviewForm dialog = new TrackPreviewForm(
-                "鈭桀漲隤踵",
+                "亮度調整",
                 -255,
                 255,
                 0,
@@ -454,7 +454,7 @@ namespace DIP
             }
 
             TrackPreviewForm dialog = new TrackPreviewForm(
-                "撠?",
+                "對比",
                 0,
                 300,
                 100,
@@ -492,7 +492,7 @@ namespace DIP
                 HistogramStretch(input, output, width, height, byteDepth));
             ShowImage(NpBitmap);
 
-            HistogramForm dialog = new HistogramForm("頧?敺?孵?", BuildHistogram(NpBitmap));
+            HistogramForm dialog = new HistogramForm("轉換後直方圖", BuildHistogram(NpBitmap));
             dialog.Show(this);
         }
 
@@ -508,7 +508,7 @@ namespace DIP
                 HistogramEqualization(input, output, width, height, byteDepth));
             ShowImage(NpBitmap);
 
-            HistogramForm dialog = new HistogramForm("蝑?敺?孵?", BuildHistogram(NpBitmap));
+            HistogramForm dialog = new HistogramForm("等化後直方圖", BuildHistogram(NpBitmap));
             dialog.Show(this);
         }
 
@@ -910,7 +910,7 @@ namespace DIP
                 this.bitmap = bitmap;
                 this.statusLabel = statusLabel;
 
-                Text = "Otsu ?";
+                Text = "Otsu 分割";
                 Width = bitmap.Width + 20;
                 Height = bitmap.Height + 72;
                 FormBorderStyle = FormBorderStyle.Fixed3D;
