@@ -74,7 +74,7 @@ int[] 結果轉回 Bitmap
 | `基本處理` | 灰階、負片、位元切片、Otsu 分割。 |
 | `調整與直方圖` | 亮度調整、對比、直方圖顯示、直方圖等化、直方圖轉換。 |
 | `幾何` | 放大縮小、圖片旋轉，支援內向/外向映射；內向映射可選 Nearest-Neighbor 或 Linear 內插，外向映射保留 forward mapping 的空洞效果。 |
-| `濾波與偵測` | 平均濾波、中值濾波、高斯濾波、銳化、拉普拉斯銳化、Prewitt、Sobel、自定義 Kernel、Canny Edge Detection、Hough Line Detection、Hough Circle Detection。 |
+| `濾波與偵測` | 平均濾波、中值濾波、高斯濾波、銳化、Prewitt、Sobel、自定義 Kernel、Canny Edge Detection、Hough Line Detection、Hough Circle Detection。 |
 
 ## C++ DLL
 
@@ -97,7 +97,7 @@ int[] 結果轉回 Bitmap
 | `HistogramStretch` | 直方圖轉換。 |
 | `HistogramEqualization` | 直方圖等化。 |
 | `SpatialFilter` | 平均、中值、高斯、銳化、邊緣、Prewitt、Sobel 等濾波。 |
-| `CustomKernelFilter` | 使用自定義 3x3 kernel、divisor、offset 做濾波。 |
+| `CustomKernelFilter` | 使用自定義 3x3 kernel 與 divisor 做濾波。 |
 | `OtsuThreshold` | Otsu 自動閥值分割。 |
 | `LineDetection` | 舊版線偵測函式。 |
 | `CannyEdgeDetection` | Canny 邊緣偵測。 |
@@ -125,7 +125,7 @@ int[] 結果轉回 Bitmap
 | `ValueInputForm` | TextBox 加確認按鈕，用於放大縮小與旋轉；幾何轉換時可選內向映射或外向映射。 |
 | `HeaderImageForm` | 在圖片上方顯示資訊，例如 Otsu 閥值。 |
 | `HistogramForm` | 顯示圖片直方圖，等化或轉換後可顯示處理後圖片與新直方圖。 |
-| `CustomKernelForm` | 輸入自定義 3x3 kernel、divisor、offset。 |
+| `CustomKernelForm` | 輸入自定義 3x3 kernel 與 divisor。 |
 
 ## 像素資料格式
 

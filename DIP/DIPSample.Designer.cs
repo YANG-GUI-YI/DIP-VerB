@@ -42,7 +42,6 @@ namespace DIP
             this.medianFilterToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.gaussianFilterToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.sharpenFilterToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.laplacianFilterToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.prewittFilterToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.sobelFilterToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.customKernelToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -230,7 +229,6 @@ namespace DIP
             this.medianFilterToolStripMenuItem,
             this.gaussianFilterToolStripMenuItem,
             this.sharpenFilterToolStripMenuItem,
-            this.laplacianFilterToolStripMenuItem,
             this.prewittFilterToolStripMenuItem,
             this.sobelFilterToolStripMenuItem,
             this.customKernelToolStripMenuItem,
@@ -268,13 +266,6 @@ namespace DIP
             this.sharpenFilterToolStripMenuItem.Size = new System.Drawing.Size(152, 26);
             this.sharpenFilterToolStripMenuItem.Text = "銳化";
             this.sharpenFilterToolStripMenuItem.Click += new System.EventHandler(this.sharpenFilterToolStripMenuItem_Click);
-            // 
-            // laplacianFilterToolStripMenuItem
-            // 
-            this.laplacianFilterToolStripMenuItem.Name = "laplacianFilterToolStripMenuItem";
-            this.laplacianFilterToolStripMenuItem.Size = new System.Drawing.Size(224, 26);
-            this.laplacianFilterToolStripMenuItem.Text = "拉普拉斯銳化";
-            this.laplacianFilterToolStripMenuItem.Click += new System.EventHandler(this.laplacianFilterToolStripMenuItem_Click);
             // 
             // prewittFilterToolStripMenuItem
             // 
@@ -373,7 +364,6 @@ namespace DIP
         private System.Windows.Forms.ToolStripMenuItem medianFilterToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem gaussianFilterToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem sharpenFilterToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem laplacianFilterToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem prewittFilterToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem sobelFilterToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem customKernelToolStripMenuItem;

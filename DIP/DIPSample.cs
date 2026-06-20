@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -208,7 +208,7 @@ namespace DIP
             MSForm activeForm = ActiveImageForm();
             if (activeForm == null || activeForm.pBitmap == null)
             {
-                MessageBox.Show("請先開啟並選取一張影像。", "DIP");
+                MessageBox.Show("請先開啟圖片。", "DIP");
                 return null;
             }
             return new Bitmap(activeForm.pBitmap);
@@ -219,7 +219,7 @@ namespace DIP
             MSForm activeForm = ActiveImageForm();
             if (activeForm == null || activeForm.pBitmap == null)
             {
-                MessageBox.Show("請先開啟並選取一張影像。", "DIP");
+                MessageBox.Show("請先開啟圖片。", "DIP");
                 return null;
             }
 
@@ -402,13 +402,13 @@ namespace DIP
             }
 
             TrackPreviewForm dialog = new TrackPreviewForm(
-                "位元切片",
+                "雿???",
                 1,
                 8,
                 1,
                 value => ProcessImage(context, (input, output, width, height, byteDepth, length) =>
                     BitPlaneSlice(input, output, width, height, byteDepth, value)),
-                value => "Bit plane " + value + "（第 " + value + " 位元）");
+                value => "Bit plane " + value + " (第 " + value + " 位元)");
             dialog.Show(this);
         }
 
@@ -423,7 +423,7 @@ namespace DIP
             int threshold = ComputeOtsuThreshold(context);
             NpBitmap = ProcessImage(context, (input, output, width, height, byteDepth, length) =>
                 OtsuThreshold(input, output, width, height, byteDepth));
-            ShowImageWithHeader(NpBitmap, "Otsu 閥值：" + threshold);
+            ShowImageWithHeader(NpBitmap, "Otsu ?亙潘?" + threshold);
         }
 
         private void brightnessToolStripMenuItem_Click(object sender, EventArgs e)
@@ -435,7 +435,7 @@ namespace DIP
             }
 
             TrackPreviewForm dialog = new TrackPreviewForm(
-                "亮度調整",
+                "鈭桀漲隤踵",
                 -255,
                 255,
                 0,
@@ -454,7 +454,7 @@ namespace DIP
             }
 
             TrackPreviewForm dialog = new TrackPreviewForm(
-                "對比",
+                "撠?",
                 0,
                 300,
                 100,
@@ -492,7 +492,7 @@ namespace DIP
                 HistogramStretch(input, output, width, height, byteDepth));
             ShowImage(NpBitmap);
 
-            HistogramForm dialog = new HistogramForm("轉換後直方圖", BuildHistogram(NpBitmap));
+            HistogramForm dialog = new HistogramForm("頧?敺?孵?", BuildHistogram(NpBitmap));
             dialog.Show(this);
         }
 
@@ -508,7 +508,7 @@ namespace DIP
                 HistogramEqualization(input, output, width, height, byteDepth));
             ShowImage(NpBitmap);
 
-            HistogramForm dialog = new HistogramForm("等化後直方圖", BuildHistogram(NpBitmap));
+            HistogramForm dialog = new HistogramForm("蝑?敺?孵?", BuildHistogram(NpBitmap));
             dialog.Show(this);
         }
 
@@ -826,12 +826,6 @@ namespace DIP
                 SpatialFilter(input, output, width, height, byteDepth, 2, 3));
         }
 
-        private void laplacianFilterToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            ApplyImageOperation((input, output, width, height, byteDepth, length) =>
-                SpatialFilter(input, output, width, height, byteDepth, 4, 3));
-        }
-
         private void prewittFilterToolStripMenuItem_Click(object sender, EventArgs e)
         {
             ApplyImageOperation((input, output, width, height, byteDepth, length) =>
@@ -861,14 +855,13 @@ namespace DIP
 
                 int[] kernel = dialog.Kernel;
                 int divisor = dialog.Divisor;
-                int offset = dialog.Offset;
                 NpBitmap = ProcessImage(context, (input, output, width, height, byteDepth, length) =>
                 {
                     unsafe
                     {
                         fixed (int* kernelPtr = kernel)
                         {
-                            CustomKernelFilter(input, output, width, height, byteDepth, (IntPtr)kernelPtr, divisor, offset);
+                            CustomKernelFilter(input, output, width, height, byteDepth, (IntPtr)kernelPtr, divisor, 0);
                         }
                     }
                 });
@@ -917,7 +910,7 @@ namespace DIP
                 this.bitmap = bitmap;
                 this.statusLabel = statusLabel;
 
-                Text = "Otsu 分割";
+                Text = "Otsu ?";
                 Width = bitmap.Width + 20;
                 Height = bitmap.Height + 72;
                 FormBorderStyle = FormBorderStyle.Fixed3D;
@@ -1223,13 +1216,11 @@ namespace DIP
         {
             private readonly TextBox[] kernelBoxes;
             private readonly TextBox divisorBox;
-            private readonly TextBox offsetBox;
             private readonly Button okButton;
             private readonly Button cancelButton;
 
             public int[] Kernel { get; private set; }
             public int Divisor { get; private set; }
-            public int Offset { get; private set; }
 
             public CustomKernelForm()
             {
@@ -1279,21 +1270,6 @@ namespace DIP
                     Text = "1"
                 };
 
-                Label offsetLabel = new Label
-                {
-                    Left = 200,
-                    Top = 100,
-                    Width = 80,
-                    Text = "偏移"
-                };
-                offsetBox = new TextBox
-                {
-                    Left = 200,
-                    Top = 122,
-                    Width = 80,
-                    Text = "0"
-                };
-
                 okButton = new Button
                 {
                     Left = 124,
@@ -1317,8 +1293,6 @@ namespace DIP
 
                 Controls.Add(divisorLabel);
                 Controls.Add(divisorBox);
-                Controls.Add(offsetLabel);
-                Controls.Add(offsetBox);
                 Controls.Add(okButton);
                 Controls.Add(cancelButton);
             }
@@ -1330,7 +1304,7 @@ namespace DIP
                 {
                     if (!int.TryParse(kernelBoxes[i].Text, out kernel[i]))
                     {
-                        MessageBox.Show("Kernel 只能輸入整數。", "DIP");
+                        MessageBox.Show("Kernel 必須輸入整數。", "DIP");
                         DialogResult = DialogResult.None;
                         return;
                     }
@@ -1343,16 +1317,9 @@ namespace DIP
                     return;
                 }
 
-                if (!int.TryParse(offsetBox.Text, out int offset))
-                {
-                    MessageBox.Show("偏移必須是整數。", "DIP");
-                    DialogResult = DialogResult.None;
-                    return;
-                }
 
                 Kernel = kernel;
                 Divisor = divisor;
-                Offset = offset;
             }
         }
 
