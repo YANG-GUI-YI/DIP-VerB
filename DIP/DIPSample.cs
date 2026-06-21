@@ -460,12 +460,54 @@ namespace DIP
                 100,
                 value =>
                 {
+                    if (value == 300)
+                    {
+                        return ProcessImage(context, BlackWhiteThreshold);
+                    }
+
                     double factor = value / 100.0;
                     return ProcessImage(context, (input, output, width, height, byteDepth, length) =>
                         Contrast(input, output, length, factor));
                 },
-                value => "對比：" + (value / 100.0).ToString("0.00"));
+                value => value == 300 ? "對比：黑白" : "對比：" + (value / 100.0).ToString("0.00"));
             dialog.Show(this);
+        }
+
+        private static unsafe void BlackWhiteThreshold(IntPtr input, IntPtr output, int width, int height, int byteDepth, int length)
+        {
+            int* source = (int*)input;
+            int* target = (int*)output;
+            int channels = byteDepth >= 3 ? 3 : 1;
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    int index = (y * width + x) * byteDepth;
+                    int gray;
+                    if (byteDepth >= 3)
+                    {
+                        int b = source[index];
+                        int g = source[index + 1];
+                        int r = source[index + 2];
+                        gray = Clamp((int)(0.114 * b + 0.587 * g + 0.299 * r + 0.5));
+                    }
+                    else
+                    {
+                        gray = Clamp(source[index]);
+                    }
+
+                    int value = gray >= 128 ? 255 : 0;
+                    for (int c = 0; c < channels; c++)
+                    {
+                        target[index + c] = value;
+                    }
+                    if (byteDepth == 4)
+                    {
+                        target[index + 3] = source[index + 3];
+                    }
+                }
+            }
         }
 
         private void histogramShowToolStripMenuItem_Click(object sender, EventArgs e)
